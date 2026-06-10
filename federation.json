@@ -1,0 +1,20 @@
+{
+  "node": {
+    "id": "coventry-csmm",
+    "name": "Coventry University",
+    "city": "Coventry",
+    "lat": 52.4068,
+    "lon": -1.5197,
+    "color": "#7DD3FC",
+    "url": "https://YeahHighly.github.io/SONAIR-Hackathon-Robotics-Strand/",
+    "contact_email": "yeh19@uni.coventry.ac.uk",
+    "role": "Hackathon campus node",
+    "summary": "Coventry University CSMM robotics evidence node presenting UR5e teleoperation data, remote robotics capability, and collaboration interests."
+  },
+  "co_creation_card": {
+    "title": "Coventry University CSMM SONAIR Sub-Portal",
+    "description": "Coventry University robotics evidence portal for UR5e teleoperation data, latency interpretation, and SONAIR collaboration requests.",
+    "tags": ["Robotics", "Teleoperation", "SONAIR", "Coventry"],
+    "visitor_url": "https://YeahHighly.github.io/SONAIR-Hackathon-Robotics-Strand/"
+  }
+}
