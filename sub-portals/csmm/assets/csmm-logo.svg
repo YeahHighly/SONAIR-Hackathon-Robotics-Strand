@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120" role="img" aria-labelledby="title desc">
+  <title id="title">Coventry University CSMM logo</title>
+  <desc id="desc">A simple CSMM robotics evidence node mark.</desc>
+  <rect width="320" height="120" rx="14" fill="#081018"/>
+  <circle cx="58" cy="60" r="28" fill="#7DD3FC"/>
+  <circle cx="58" cy="60" r="13" fill="#081018"/>
+  <path d="M94 34h4v52h-4zM112 34h4v52h-4zM130 34h4v52h-4z" fill="#A7F3D0"/>
+  <text x="158" y="56" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#E8F2FA">CSMM</text>
+  <text x="158" y="82" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#9FB3C5">Robotics Evidence Node</text>
+</svg>

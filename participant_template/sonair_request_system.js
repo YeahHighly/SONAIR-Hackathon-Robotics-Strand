@@ -313,7 +313,7 @@
     const modeNote={
       server:`<span style="font-size:9px;font-family:monospace;color:rgba(63,185,80,.6);">⬤ SONAIR server · ${API_BASE}</span>`,
       github:`<span style="font-size:9px;font-family:monospace;color:rgba(122,140,255,.6);">⬤ GitHub Issues · ${GH_OWNER}/${GH_REPO}</span>`,
-      local: `<span style="font-size:9px;color:rgba(200,100,50,.7);">⚠ localStorage only — visible on this device only. Check the event request API endpoint (SONAIR_API_BASE).</span>`,
+      local: `<span style="font-size:9px;color:rgba(200,100,50,.7);">Awaiting organiser request API. Until SONAIR_API_BASE is set, test requests are visible on this device only.</span>`,
     }[mode]||'';
     const reqHtml=err
       ?`<div style="font-size:11px;color:#f87171;padding:8px;">Error: ${esc(err)}</div>`

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SONAIR — Iframe Compatibility Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { font-size: 1.2rem; margin-bottom: 4px; }
+    p  { font-size: 0.875rem; color: #94a3b8; margin: 0 0 16px; }
+    .instructions {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    .instructions code {
+      background: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .status.pass { background: #14532d; color: #86efac; }
+    .status.fail { background: #7f1d1d; color: #fca5a5; }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .checklist {
+      margin-top: 20px;
+      font-size: 0.85rem;
+      line-height: 2;
+    }
+    .checklist li { list-style: none; }
+    .checklist li::before { content: "☐ "; }
+  </style>
+</head>
+<body>
+
+  <h1>SONAIR — Iframe Compatibility Test</h1>
+  <p>Use this file to verify your sub-portal loads correctly inside an iframe before the demo.</p>
+
+  <div class="instructions">
+    <strong>Instructions:</strong><br>
+    1. Replace the <code>src</code> attribute on the <code>&lt;iframe&gt;</code> below with your deployed sub-portal URL.<br>
+    2. Open this file in a browser (double-click, or serve locally with <code>python -m http.server</code>).<br>
+    3. Open DevTools (<strong>F12</strong>) → <strong>Console</strong> tab.<br>
+    4. Check: no <code>X-Frame-Options</code> or <code>Content-Security-Policy frame-ancestors</code> errors.<br>
+    5. Check: the portal renders visibly — not a blank white box.
+  </div>
+
+  <!-- ============================================================
+       STEP 1: Replace this src with your deployed sub-portal URL.
+       Example: src="https://your-uni.github.io/sonair-portal"
+       ============================================================ -->
+  <iframe
+    src="https://YeahHighly.github.io/SONAIR-Hackathon-Robotics-Strand/sub-portals/csmm/"
+    title="Coventry University CSMM SONAIR sub-portal"
+    sandbox="allow-scripts allow-same-origin allow-forms"
+  ></iframe>
+
+  <div class="checklist">
+    <strong>Pre-demo checklist (Connector owns these):</strong>
+    <ul>
+      <li>No <code>X-Frame-Options</code> error in DevTools Console</li>
+      <li>No <code>Content-Security-Policy frame-ancestors</code> error in DevTools Console</li>
+      <li>Portal renders and is not a blank white box</li>
+      <li>Portal reads <code>theme.config.json</code> and applies <code>primary_color</code></li>
+      <li><code>federation.json</code> is present at repo root and passes <code>python validate_submission.py</code></li>
+    </ul>
+  </div>
+
+</body>
+</html>

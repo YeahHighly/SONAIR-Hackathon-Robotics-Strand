@@ -61,6 +61,14 @@
       font-weight:700;
     }
     .lead { max-width:760px; color:var(--muted); font-size:18px; line-height:1.65; }
+    .brand-logo {
+      width:160px;
+      max-width:45vw;
+      height:auto;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;
+      background:#081018;
+    }
     .muted { color:var(--muted); line-height:1.6; }
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
     .card {
@@ -113,6 +121,7 @@
 </head>
 <body>
   <header>
+    <img class="brand-logo" id="brand-logo" src="./assets/csmm-logo.svg" alt="Coventry University CSMM logo" />
     <span class="eyebrow" id="city">Coventry</span>
     <h1 id="institution">Coventry University</h1>
     <p class="lead" id="node-name">CSMM Robotics Evidence Node for remote teleoperation, trustworthy robotics evidence, and SONAIR collaboration.</p>
@@ -131,7 +140,7 @@
       <article class="card">
         <h2>Collaboration Contact</h2>
         <p class="muted">Email: <a href="mailto:yeh19@uni.coventry.ac.uk">yeh19@uni.coventry.ac.uk</a></p>
-        <span class="pill">Node ID: coventry-csmm</span>
+        <span class="pill">Node ID: csmm</span>
       </article>
     </section>
 
@@ -211,6 +220,7 @@
         document.getElementById('institution').textContent = config.institution_name || 'Coventry University';
         document.getElementById('node-name').textContent = (config.node_name || 'CSMM Robotics Evidence Node') + ' for remote teleoperation, trustworthy robotics evidence, and SONAIR collaboration.';
         document.getElementById('city').textContent = config.city || 'Coventry';
+        if (config.logo_url) document.getElementById('brand-logo').src = config.logo_url;
         document.title = (config.institution_name || 'Coventry University') + ' SONAIR Sub-Portal';
       })
       .catch(() => console.warn('theme.config.json could not be loaded'));
@@ -250,7 +260,7 @@
     }
 
     async function fetchData(file) {
-      const paths = [`data/${file}`, `../data/${file}`];
+      const paths = [`data/${file}`, `../data/${file}`, `../../data/${file}`];
       let lastError;
       for (const path of paths) {
         try {
@@ -445,7 +455,7 @@
   </script>
 
   <script>
-    window.SONAIR_NODE_ID = 'coventry-csmm';
+    window.SONAIR_NODE_ID = 'csmm';
     // Replace this empty value with the event request API endpoint provided by the organisers.
     window.SONAIR_API_BASE = '';
   </script>

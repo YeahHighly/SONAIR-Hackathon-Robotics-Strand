@@ -3,5 +3,5 @@
   "node_name": "CSMM Robotics Evidence Node",
   "city": "Coventry",
   "primary_color": "#7DD3FC",
-  "logo_url": ""
+  "logo_url": "./assets/csmm-logo.svg"
 }
