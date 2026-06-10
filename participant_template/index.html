@@ -108,8 +108,16 @@
       font-size:12px;
       font-weight:700;
     }
-    .request-actions { display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
-    #requests-inbox { margin-top:14px; }
+    .evaluation-list { display:grid; gap:8px; margin:14px 0 0; }
+    .evaluation-list code {
+      display:block;
+      overflow-wrap:anywhere;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      color:var(--accent);
+      background:rgba(255,255,255,.04);
+    }
     .interpretation { border-left:3px solid var(--primary); padding-left:14px; }
     .small { font-size:13px; }
     @media (max-width: 820px) {
@@ -202,13 +210,13 @@
     </section>
 
     <section class="card">
-      <h2>Access And Collaboration Requests</h2>
-      <p class="muted">Requests routed to Coventry CSMM by the SONAIR server will appear below for review.</p>
-      <div class="request-actions">
-        <button onclick="SONAIR_REQUESTS.openForm('visit')">Apply to Visit</button>
-        <button onclick="SONAIR_REQUESTS.openForm('collab')">Apply to Collaborate</button>
+      <h2>SONAIR Evaluation Interface</h2>
+      <p class="muted">The organiser server can embed this portal and retrieve the current CSMM assessment result from the dashboard metrics.</p>
+      <div class="evaluation-list">
+        <span class="pill" id="evaluation-status">Evaluation loading</span>
+        <code id="evaluation-summary">Waiting for dashboard metrics...</code>
+        <code>Static result: <a href="evaluation.json">evaluation.json</a></code>
       </div>
-      <div id="requests-inbox"></div>
     </section>
   </main>
 
@@ -440,6 +448,40 @@
           `Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median) = ${fmtMs(tailGap)} for this session. ` +
           `This gives a compact evidence score for extra real-world delay beyond typical control timing.`;
 
+        const evaluation = {
+          node_id: 'csmm',
+          institution: 'Coventry University',
+          status: 'ready',
+          generated_at: new Date().toISOString(),
+          dataset: {
+            rtt_samples: rtt.count,
+            command_records: cmd.count,
+            audit_events: auditRows.length,
+            packet_loss_count: rttRows.filter(row => row.lost === '1').length
+          },
+          metrics: {
+            median_rtt_ms: round(rtt.median),
+            p95_rtt_ms: round(rtt.p95),
+            max_rtt_ms: round(rtt.max),
+            median_command_delay_ms: round(cmd.median),
+            p95_command_delay_ms: round(cmd.p95),
+            max_command_delay_ms: round(cmd.max),
+            tail_timing_gap_ms: round(tailGap)
+          },
+          assessment: {
+            label: 'Responsive with measurable tail latency risk',
+            summary: document.getElementById('interpretation').textContent,
+            metric_definition: 'Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median)'
+          }
+        };
+        window.SONAIR_EVALUATION = evaluation;
+        document.getElementById('evaluation-status').textContent = 'Evaluation ready';
+        document.getElementById('evaluation-summary').textContent =
+          `tail_timing_gap_ms=${evaluation.metrics.tail_timing_gap_ms}; ` +
+          `p95_rtt_ms=${evaluation.metrics.p95_rtt_ms}; ` +
+          `p95_command_delay_ms=${evaluation.metrics.p95_command_delay_ms}`;
+        window.dispatchEvent(new CustomEvent('sonair:evaluation-ready', { detail: evaluation }));
+
         drawRttChart(document.getElementById('rtt-chart'), rttRows, auditRows);
         drawHistogram(document.getElementById('latency-chart'), cmdRows);
         window.addEventListener('resize', () => {
@@ -448,8 +490,22 @@
         });
       } catch (err) {
         status.textContent = `Dataset could not be loaded: ${err.message}`;
+        window.SONAIR_EVALUATION = { node_id: 'csmm', status: 'error', error: err.message };
+        document.getElementById('evaluation-status').textContent = 'Evaluation error';
+        document.getElementById('evaluation-summary').textContent = err.message;
       }
     }
+
+    window.SONAIR_EVALUATION = { node_id: 'csmm', status: 'loading' };
+    window.addEventListener('message', event => {
+      const data = event.data || {};
+      if (data.type !== 'SONAIR_EVALUATION_REQUEST') return;
+      event.source?.postMessage({
+        type: 'SONAIR_EVALUATION_RESULT',
+        request_id: data.request_id || null,
+        evaluation: window.SONAIR_EVALUATION
+      }, event.origin || '*');
+    });
 
     loadDashboard();
   </script>
@@ -458,10 +514,6 @@
     window.SONAIR_NODE_ID = 'csmm';
     // Replace this empty value with the event request API endpoint provided by the organisers.
     window.SONAIR_API_BASE = '';
-  </script>
-  <script src="sonair_request_system.js"></script>
-  <script>
-    SONAIR_REQUESTS.renderInbox('requests-inbox');
   </script>
 </body>
 </html>

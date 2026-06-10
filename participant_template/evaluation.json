@@ -1,0 +1,27 @@
+{
+  "node_id": "csmm",
+  "institution": "Coventry University",
+  "status": "ready",
+  "result_type": "sonair_robotics_evaluation",
+  "dataset": {
+    "name": "UCL-Nottingham UR5e teleoperation dataset",
+    "rtt_samples": 1750,
+    "command_records": 4220,
+    "audit_events": 25,
+    "packet_loss_count": 0
+  },
+  "metrics": {
+    "median_rtt_ms": 41,
+    "p95_rtt_ms": 112,
+    "max_rtt_ms": 401,
+    "median_command_delay_ms": 37,
+    "p95_command_delay_ms": 84,
+    "max_command_delay_ms": 243,
+    "tail_timing_gap_ms": 118
+  },
+  "assessment": {
+    "label": "Responsive with measurable tail latency risk",
+    "metric_definition": "Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median)",
+    "summary": "The session is generally responsive, but the tail latency is important for trustworthy teleoperation. RTT P95 reaches 112 ms, command-delay P95 reaches 84 ms, and the largest RTT spike is 401 ms. This suggests the sim2real timing gap should be reported as a tail-risk measure, not only as an average latency."
+  }
+}
