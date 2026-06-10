@@ -8,7 +8,11 @@
     "rtt_samples": 1750,
     "command_records": 4220,
     "audit_events": 25,
-    "packet_loss_count": 0
+    "packet_loss_count": 0,
+    "tcp_samples": 712,
+    "robot_operations": 2128,
+    "joint_snapshots": 717,
+    "trajectory_error_samples": 711
   },
   "metrics": {
     "median_rtt_ms": 41,
@@ -17,11 +21,141 @@
     "median_command_delay_ms": 37,
     "p95_command_delay_ms": 84,
     "max_command_delay_ms": 243,
-    "tail_timing_gap_ms": 118
+    "tail_timing_gap_ms": 118,
+    "median_motion_response_ms": 160,
+    "p95_motion_response_ms": 929,
+    "physical_response_risk_window_ms": 1047,
+    "tcp_path_m": 0.845,
+    "peak_tcp_speed_mm_s": 777,
+    "median_operation_interval_ms": 20,
+    "baseline_tcp_jitter_p95_mm": 0.0618,
+    "joint_range_deg": [19.286, 23.08, 39.766, 16.704, 1.041, 19.279],
+    "mean_tracking_error_mm": 2.021,
+    "p95_tracking_error_mm": 8.015,
+    "max_tracking_error_mm": 231.919,
+    "movement_accuracy_at_5mm_pct": 91.0,
+    "movement_accuracy_at_10mm_pct": 95.78,
+    "movement_accuracy_at_20mm_pct": 98.31,
+    "recovery_aware_trajectory_score": 0.9518,
+    "recovery_aware_deviation_score": 0.0482,
+    "recovery_tail_error_rate_pct": 4.22,
+    "recovery_consecutive_error_penalty": 0.000301,
+    "longest_error_segment_samples": 9,
+    "error_segment_count": 10
+  },
+  "movement_metrics": {
+    "ideal_position_inference": "Ideal next position = previous actual TCP position + command speed * time gap.",
+    "actual_position": "Actual next position = x, y, z from ur_tcp_pose_samples.csv.",
+    "error_definition": "Tracking error = distance between the actual next position and the ideal next position.",
+    "metric_1": {
+      "name": "Threshold-based Movement Accuracy",
+      "formula": "At a chosen millimetre limit, count samples inside the limit and divide by all samples.",
+      "thresholds_mm": [1, 2, 5, 10, 20, 50],
+      "accuracy_curve": [
+        { "threshold_mm": 1, "accuracy_pct": 87.9 },
+        { "threshold_mm": 2, "accuracy_pct": 89.31 },
+        { "threshold_mm": 5, "accuracy_pct": 91.0 },
+        { "threshold_mm": 10, "accuracy_pct": 95.78 },
+        { "threshold_mm": 20, "accuracy_pct": 98.31 },
+        { "threshold_mm": 50, "accuracy_pct": 99.58 }
+      ]
+    },
+    "metric_4": {
+      "name": "Recovery-aware Error Timeline",
+      "formula": "Start from 1, then subtract penalties for average error size, above-limit samples, and long repeated error runs.",
+      "tolerance_mm": 10,
+      "score": 0.9518,
+      "components": {
+        "mean_normalized_error": 0.088732,
+        "tail_error_rate": 0.042194,
+        "consecutive_error_penalty": 0.000301
+      }
+    }
+  },
+  "critical_cases": [
+    {
+      "rank": 1,
+      "command_type": "movel",
+      "rtt_ms": 60,
+      "command_delay_ms": 16,
+      "motion_lag_ms": 289,
+      "tcp_speed_mm_s": 777,
+      "pose": {
+        "x_m": 0.548067,
+        "y_m": 0.229562,
+        "z_m": 0.045801
+      },
+      "explanation": "Combined timing score is high because the robot is moving at the peak observed TCP speed. This pose is a useful physical-stability case even though RTT is not the highest."
+    },
+    {
+      "rank": 2,
+      "command_type": "speedj",
+      "rtt_ms": 303,
+      "command_delay_ms": 30,
+      "motion_lag_ms": 513,
+      "tcp_speed_mm_s": 1,
+      "pose": {
+        "x_m": 0.553656,
+        "y_m": 0.211529,
+        "z_m": 0.045775
+      },
+      "explanation": "RTT is in the tail at 303 ms, far above the 112 ms P95 benchmark. This is a typical network-risk pose where the operator may see stale state or delayed confirmation."
+    },
+    {
+      "rank": 3,
+      "command_type": "movel",
+      "rtt_ms": 303,
+      "command_delay_ms": 16,
+      "motion_lag_ms": 126,
+      "tcp_speed_mm_s": 17,
+      "pose": {
+        "x_m": 0.643829,
+        "y_m": 0.166817,
+        "z_m": 0.045767
+      },
+      "explanation": "This is another high-RTT pose at 303 ms, but with lower motion lag. It separates communication risk from physical response risk."
+    },
+    {
+      "rank": 4,
+      "command_type": "speedl_stop",
+      "rtt_ms": 152,
+      "command_delay_ms": 53,
+      "motion_lag_ms": 260,
+      "tcp_speed_mm_s": 14,
+      "pose": {
+        "x_m": 0.503404,
+        "y_m": 0.311749,
+        "z_m": 0.04587
+      },
+      "explanation": "A stop command appears while RTT is above P95. This is a safety-relevant case because the command intent is to halt or reduce motion."
+    }
+  ],
+  "replay_visualization": {
+    "type": "threejs_urdf_joint_replay",
+    "robot_model": "robots/ur5e_simplified.urdf",
+    "case_window_ms": 2200,
+    "labels": ["before_pose", "critical_pose", "after_pose"],
+    "error_marker_policy": {
+      "tracking_error_source": "nearest ideal-vs-actual TCP tracking error sample",
+      "warning_marker": "orange when tracking error is above 10 mm",
+      "high_marker": "red when tracking error is above 20 mm",
+      "current_frame_highlight": "3D replay frame and error badge turn red on high-error frames"
+    },
+    "joint_mapping": {
+      "q0": "shoulder_pan_joint",
+      "q1": "shoulder_lift_joint",
+      "q2": "elbow_joint",
+      "q3": "wrist_1_joint",
+      "q4": "wrist_2_joint",
+      "q5": "wrist_3_joint"
+    },
+    "input_policy": "uses computed metrics and local robot telemetry only; no visitor text input, file upload, or browser-side API key path"
   },
   "assessment": {
-    "label": "Responsive with measurable tail latency risk",
-    "metric_definition": "Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median)",
-    "summary": "The session is generally responsive, but the tail latency is important for trustworthy teleoperation. RTT P95 reaches 112 ms, command-delay P95 reaches 84 ms, and the largest RTT spike is 401 ms. This suggests the sim2real timing gap should be reported as a tail-risk measure, not only as an average latency."
+    "label": "Responsive, with measurable network-to-motion tail risk",
+    "metric_definition": "Physical Response Risk Window = Tail Timing Gap + command-to-motion P95",
+    "summary": "The session is generally responsive, but the tail latency is important for trustworthy teleoperation. RTT P95 reaches 112 ms, command-delay P95 reaches 84 ms, and the largest RTT spike is 401 ms. This suggests the sim2real timing gap should be reported as a tail-risk measure, not only as an average latency.",
+    "motion_summary": "The motion log shows 0.845 m of TCP travel, peak observed TCP speed of 777 mm/s, median operation interval of 20 ms, median command-to-motion response of 160 ms, and P95 command-to-motion response of 929 ms. The baseline TCP jitter P95 before active operation is 0.0618 mm, so the 0.5 mm response threshold is above the static noise floor.",
+    "trajectory_summary": "Threshold-based Movement Accuracy reports 95.78% at the 10 mm tolerance using a one-step ideal trajectory inferred from speedl linear velocity commands. The Recovery-aware Error Timeline gives a score of 0.9518 because mean tracking error is 2.021 mm, P95 error is 8.015 mm, and the longest above-threshold episode lasts 9 samples."
   }
 }

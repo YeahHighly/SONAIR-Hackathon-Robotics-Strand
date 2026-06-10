@@ -1,0 +1,149 @@
+<?xml version="1.0"?>
+<robot name="ur5e_simplified">
+  <material name="base_dark">
+    <color rgba="0.07 0.10 0.13 1"/>
+  </material>
+  <material name="joint_blue">
+    <color rgba="0.18 0.62 0.86 1"/>
+  </material>
+  <material name="link_light">
+    <color rgba="0.82 0.90 0.96 1"/>
+  </material>
+  <material name="tool_warning">
+    <color rgba="0.98 0.74 0.18 1"/>
+  </material>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.035" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.085" length="0.07"/>
+      </geometry>
+      <material name="base_dark"/>
+    </visual>
+  </link>
+
+  <joint name="shoulder_pan_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="shoulder_link"/>
+    <origin xyz="0 0 0.085" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-6.283185" upper="6.283185" effort="150" velocity="3.14159"/>
+  </joint>
+
+  <link name="shoulder_link">
+    <visual>
+      <origin xyz="0 0 0.055" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.055" length="0.11"/>
+      </geometry>
+      <material name="joint_blue"/>
+    </visual>
+  </link>
+
+  <joint name="shoulder_lift_joint" type="revolute">
+    <parent link="shoulder_link"/>
+    <child link="upper_arm_link"/>
+    <origin xyz="0 0 0.105" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-6.283185" upper="6.283185" effort="150" velocity="3.14159"/>
+  </joint>
+
+  <link name="upper_arm_link">
+    <visual>
+      <origin xyz="0.16 0 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.32"/>
+      </geometry>
+      <material name="link_light"/>
+    </visual>
+  </link>
+
+  <joint name="elbow_joint" type="revolute">
+    <parent link="upper_arm_link"/>
+    <child link="forearm_link"/>
+    <origin xyz="0.32 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-6.283185" upper="6.283185" effort="150" velocity="3.14159"/>
+  </joint>
+
+  <link name="forearm_link">
+    <visual>
+      <origin xyz="0.135 0 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.031" length="0.27"/>
+      </geometry>
+      <material name="link_light"/>
+    </visual>
+  </link>
+
+  <joint name="wrist_1_joint" type="revolute">
+    <parent link="forearm_link"/>
+    <child link="wrist_1_link"/>
+    <origin xyz="0.27 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-6.283185" upper="6.283185" effort="75" velocity="3.14159"/>
+  </joint>
+
+  <link name="wrist_1_link">
+    <visual>
+      <origin xyz="0.052 0 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.034" length="0.104"/>
+      </geometry>
+      <material name="joint_blue"/>
+    </visual>
+  </link>
+
+  <joint name="wrist_2_joint" type="revolute">
+    <parent link="wrist_1_link"/>
+    <child link="wrist_2_link"/>
+    <origin xyz="0.104 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-6.283185" upper="6.283185" effort="75" velocity="3.14159"/>
+  </joint>
+
+  <link name="wrist_2_link">
+    <visual>
+      <origin xyz="0.046 0 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.03" length="0.092"/>
+      </geometry>
+      <material name="joint_blue"/>
+    </visual>
+  </link>
+
+  <joint name="wrist_3_joint" type="revolute">
+    <parent link="wrist_2_link"/>
+    <child link="wrist_3_link"/>
+    <origin xyz="0.092 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-6.283185" upper="6.283185" effort="75" velocity="3.14159"/>
+  </joint>
+
+  <link name="wrist_3_link">
+    <visual>
+      <origin xyz="0.035 0 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.027" length="0.07"/>
+      </geometry>
+      <material name="joint_blue"/>
+    </visual>
+  </link>
+
+  <joint name="tool0_fixed_joint" type="fixed">
+    <parent link="wrist_3_link"/>
+    <child link="tool0"/>
+    <origin xyz="0.07 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="tool0">
+    <visual>
+      <origin xyz="0.025 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.035 0.035"/>
+      </geometry>
+      <material name="tool_warning"/>
+    </visual>
+  </link>
+</robot>

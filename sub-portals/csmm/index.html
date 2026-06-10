@@ -4,6 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Coventry University SONAIR Sub-Portal</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: { scale: 0.98, matchFontHeight: false },
+      options: { renderActions: { addMenu: [] } }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "urdf-loader": "https://unpkg.com/urdf-loader@0.12.6/src/URDFLoader.js",
+        "urdf-loader/": "https://unpkg.com/urdf-loader@0.12.6/src/"
+      }
+    }
+  </script>
   <style>
     :root {
       --primary:#7DD3FC;
@@ -22,8 +44,9 @@
       font-family:system-ui,-apple-system,Segoe UI,sans-serif;
       background:var(--bg);
       color:var(--text);
+      overflow-x:hidden;
     }
-    header, main { width:min(1180px,94vw); margin:auto; }
+    header, main { width:min(1180px, calc(100% - 24px)); margin:auto; }
     header {
       min-height:42vh;
       display:grid;
@@ -88,6 +111,40 @@
     .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.85fr); gap:14px; }
     .chart-card { min-height:390px; }
     .chart-wrap { height:315px; position:relative; }
+    .wide-chart { grid-column:1 / -1; min-height:440px; }
+    .wide-chart .chart-wrap { height:360px; }
+    .analysis-note {
+      margin:14px 0 0;
+      padding:12px 14px;
+      border-left:3px solid var(--warning);
+      background:rgba(251,191,36,.08);
+      color:var(--muted);
+      line-height:1.55;
+    }
+    .case-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-top:14px; }
+    .case-card {
+      display:grid;
+      gap:8px;
+      background:var(--panel-2);
+      border:1px solid rgba(251,191,36,.28);
+      border-radius:8px;
+      padding:14px;
+    }
+    .case-card strong { color:var(--warning); }
+    .case-card dl { display:grid; grid-template-columns:auto 1fr; gap:5px 10px; margin:0; font-size:13px; }
+    .case-card dt { color:var(--muted); }
+    .case-card dd { margin:0; color:var(--text); }
+    .backend-panel { display:grid; gap:10px; margin-top:14px; }
+    .backend-output {
+      min-height:92px;
+      white-space:pre-wrap;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      padding:12px;
+      color:var(--muted);
+      background:rgba(255,255,255,.04);
+      line-height:1.55;
+    }
     canvas { display:block; width:100%; height:100%; }
     .status {
       display:flex;
@@ -120,10 +177,275 @@
     }
     .interpretation { border-left:3px solid var(--primary); padding-left:14px; }
     .small { font-size:13px; }
+    .replay-section {
+      margin:34px 0;
+      padding:30px 0;
+      border-top:1px solid rgba(255,255,255,.12);
+      border-bottom:1px solid rgba(255,255,255,.12);
+      background:#0A1119;
+    }
+    .replay-layout {
+      display:grid;
+      grid-template-columns:minmax(0,1.35fr) minmax(290px,.65fr);
+      gap:18px;
+      align-items:start;
+      margin-top:16px;
+    }
+    .replay-stage {
+      position:relative;
+      min-height:500px;
+      height:min(62vh,650px);
+      overflow:hidden;
+      border:1px solid rgba(125,211,252,.26);
+      border-radius:8px;
+      background:#05090E;
+    }
+    .replay-stage.risk-warning {
+      border-color:rgba(251,191,36,.74);
+      box-shadow:0 0 0 1px rgba(251,191,36,.16), inset 0 0 34px rgba(251,191,36,.08);
+    }
+    .replay-stage.risk-high {
+      border-color:rgba(248,113,113,.86);
+      box-shadow:0 0 0 1px rgba(248,113,113,.20), inset 0 0 40px rgba(248,113,113,.10);
+    }
+    #robot-replay-viewer {
+      position:absolute;
+      inset:0;
+    }
+    .replay-hud {
+      position:absolute;
+      top:12px;
+      left:12px;
+      right:12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      pointer-events:none;
+    }
+    .replay-label {
+      position:absolute;
+      min-width:92px;
+      padding:6px 8px;
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:6px;
+      background:rgba(5,9,14,.78);
+      color:var(--text);
+      font-size:12px;
+      line-height:1.25;
+      pointer-events:none;
+      max-width:calc(100% - 16px);
+    }
+    .replay-label strong {
+      display:block;
+      color:var(--warning);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:0;
+    }
+    .replay-guide {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin:12px 0 0;
+    }
+    .replay-guide span {
+      display:block;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      background:rgba(255,255,255,.035);
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .replay-guide strong {
+      display:block;
+      color:var(--accent);
+      margin-bottom:3px;
+    }
+    .replay-side {
+      display:grid;
+      gap:14px;
+    }
+    .replay-controls {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .replay-controls button {
+      min-width:74px;
+    }
+    .select-control,
+    .range-control input {
+      width:100%;
+      min-height:38px;
+      border:1px solid var(--line);
+      border-radius:6px;
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      font:inherit;
+      padding:7px 10px;
+    }
+    .range-control {
+      display:grid;
+      gap:6px;
+      color:var(--muted);
+      font-size:13px;
+      flex:1 1 170px;
+    }
+    .replay-facts {
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:7px 12px;
+      margin:0;
+      font-size:13px;
+    }
+    .replay-facts dt { color:var(--muted); }
+    .replay-facts dd { margin:0; color:var(--text); overflow-wrap:anywhere; }
+    .risk-ok { color:#A7F3D0 !important; border-color:rgba(167,243,208,.35) !important; background:rgba(167,243,208,.08) !important; }
+    .risk-warning { color:#FBBF24 !important; border-color:rgba(251,191,36,.48) !important; background:rgba(251,191,36,.10) !important; }
+    .risk-high { color:#FCA5A5 !important; border-color:rgba(248,113,113,.58) !important; background:rgba(248,113,113,.12) !important; }
+    .joint-readout {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      font-size:12px;
+    }
+    .joint-readout span {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      padding:7px 8px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      color:var(--muted);
+      background:rgba(255,255,255,.035);
+    }
+    .joint-readout strong { color:var(--text); font-weight:700; }
+    .metric-lab {
+      display:grid;
+      gap:16px;
+    }
+    .metric-lab > *,
+    .formula-band,
+    .metric-strip,
+    .dashboard-grid,
+    .card,
+    .chart-card,
+    .formula-card {
+      min-width:0;
+      max-width:100%;
+    }
+    .formula-band {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:14px;
+      align-items:stretch;
+    }
+    .formula-card {
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;
+      padding:16px;
+      background:linear-gradient(135deg, rgba(125,211,252,.08), rgba(167,243,208,.04));
+    }
+    .formula-card code {
+      display:block;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+      margin-top:10px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      background:rgba(0,0,0,.22);
+      color:var(--accent);
+      line-height:1.55;
+    }
+    .plain-formula {
+      display:grid;
+      gap:8px;
+      margin:12px 0 0;
+      padding:0;
+      list-style:none;
+    }
+    .plain-formula li {
+      display:grid;
+      gap:4px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;
+      background:rgba(0,0,0,.18);
+      color:var(--muted);
+      line-height:1.45;
+    }
+    .plain-formula strong { color:var(--accent); }
+    .math-block {
+      margin-top:12px;
+      overflow-x:auto;
+      border:1px solid rgba(125,211,252,.18);
+      border-radius:6px;
+      padding:10px 12px;
+      background:rgba(0,0,0,.18);
+      color:var(--accent);
+    }
+    .math-block mjx-container {
+      color:var(--accent);
+      min-width:max-content;
+    }
+    .formula-figure {
+      margin:12px 0 0;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .formula-figure img {
+      display:block;
+      width:100%;
+      height:auto;
+    }
+    .formula-figure figcaption {
+      margin:0;
+      padding:9px 11px;
+      background:rgba(8,16,24,.96);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .metric-strip {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+    }
+    .mini-score {
+      min-height:104px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:14px;
+      background:var(--panel-2);
+    }
+    .mini-score strong {
+      display:block;
+      margin-top:8px;
+      color:var(--primary);
+      font-size:clamp(24px,3vw,38px);
+      line-height:1;
+    }
+    .mini-score span {
+      color:var(--muted);
+      font-size:12px;
+    }
     @media (max-width: 820px) {
       header { min-height:34vh; }
       .dashboard-grid { grid-template-columns:1fr; }
       .chart-wrap { height:280px; }
+      .formula-band { grid-template-columns:1fr; }
+      .metric-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .replay-guide { grid-template-columns:1fr; }
+      .replay-section { margin:28px 0; padding:24px 0; }
+      .replay-layout { grid-template-columns:1fr; }
+      .replay-stage { min-height:380px; height:52vh; }
+      .joint-readout { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -191,6 +513,204 @@
           <p class="muted small">Distribution of relay round-trip delay for robot commands.</p>
           <div class="chart-wrap"><canvas id="latency-chart" aria-label="Command latency histogram"></canvas></div>
         </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="motion-title">
+      <h2 id="motion-title">Motion-Coupled Latency Analysis</h2>
+      <p class="muted">This section connects communication timing to physical UR5e movement: what the network does, and what the robot actually does afterwards.</p>
+      <div class="status" id="motion-status">Loading robot motion data...</div>
+
+      <div class="grid" aria-label="Motion-coupled metrics">
+        <article class="card metric">
+          <p class="label">Median Motion Response</p>
+          <div class="value" id="motion-lag">--</div>
+          <p class="label">Command to measurable TCP displacement.</p>
+        </article>
+        <article class="card metric">
+          <p class="label">TCP Path Travelled</p>
+          <div class="value" id="tcp-path">--</div>
+          <p class="label">Total physical end-effector movement.</p>
+        </article>
+        <article class="card metric">
+          <p class="label">Peak TCP Speed</p>
+          <div class="value" id="tcp-speed">--</div>
+          <p class="label">Largest observed physical motion rate.</p>
+        </article>
+        <article class="card metric">
+          <p class="label">Physical Risk Window</p>
+          <div class="value" id="physical-risk">--</div>
+          <p class="label">Network tail gap plus motion-response P95.</p>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="card chart-card">
+          <h3>RTT Risk vs TCP Motion</h3>
+          <p class="muted small">RTT and TCP speed are aligned by normalised session progress because the motion stream has separate absolute timestamps.</p>
+          <div class="chart-wrap"><canvas id="motion-risk-chart" aria-label="RTT risk and TCP motion chart"></canvas></div>
+        </article>
+        <article class="card chart-card">
+          <h3>Command-To-Motion Lag</h3>
+          <p class="muted small">Delay from a logged operation to at least 0.5 mm of TCP displacement within a 3 second window.</p>
+          <div class="chart-wrap"><canvas id="motion-lag-chart" aria-label="Command-to-motion lag histogram"></canvas></div>
+        </article>
+      </div>
+
+      <p class="analysis-note" id="motion-interpretation">Loading physical motion interpretation...</p>
+    </section>
+
+    <section class="metric-lab" aria-labelledby="trajectory-metrics-title">
+      <div>
+        <h2 id="trajectory-metrics-title">Trustworthy Motion Metrics</h2>
+        <p class="muted">Two additional SONAIR evidence metrics compare the real TCP movement with an estimated ideal one-step command trajectory. They focus on both precision and recovery after deviation.</p>
+        <div class="status" id="trajectory-status">Estimating ideal trajectory from command velocities...</div>
+      </div>
+
+      <div class="formula-band">
+        <article class="formula-card">
+          <h3>Ideal vs Actual Position Inference</h3>
+          <p class="muted small">The dataset does not provide a direct target_position field, so the ideal next position is inferred from the current command speed and the previous real TCP position.</p>
+          <ul class="plain-formula">
+            <li><strong>Actual next position</strong>Read x, y, z directly from the TCP log at the next sample.</li>
+            <li><strong>Command speed</strong>Read vx, vy, vz from speedl xd values.</li>
+            <li><strong>Ideal next position</strong>Previous actual position + command speed * time gap.</li>
+            <li><strong>Tracking error</strong>Distance between actual next position and ideal next position.</li>
+          </ul>
+          <div class="math-block">
+            \[
+            \begin{aligned}
+            \text{Actual next} &= [x_i, y_i, z_i] \\
+            \text{Command speed} &= [v_x, v_y, v_z] \\
+            \text{Ideal next} &= \text{Previous actual} + \text{Command speed} \times \Delta t \\
+            \text{Tracking error} &= \mathrm{distance}(\text{Actual next}, \text{Ideal next})
+            \end{aligned}
+            \]
+          </div>
+        </article>
+        <article class="formula-card">
+          <h3>Two Motion Quality Metrics</h3>
+          <p class="muted small">The first metric shows how often the robot stays within a tolerance. The second shows whether above-limit errors recover quickly.</p>
+          <ul class="plain-formula">
+            <li><strong>Threshold-based Movement Accuracy</strong>At a chosen millimetre threshold, count how many samples stay inside the limit, then divide by all samples.</li>
+            <li><strong>Recovery-aware Error Timeline</strong>Start from a perfect score of 1, then subtract penalties for average error size, above-limit samples, and long repeated error runs.</li>
+          </ul>
+          <div class="math-block">
+            \[
+            \begin{aligned}
+            \text{Threshold Accuracy}
+            &= \frac{\text{inside-limit samples}}{\text{all samples}} \\
+            A &= \text{average error penalty} \\
+            B &= \text{above-limit rate} \\
+            C &= \text{long-run penalty} \\
+            \text{Recovery Score}
+            &= 1 - (0.4A + 0.3B + 0.3C)
+            \end{aligned}
+            \]
+          </div>
+          <figure class="formula-figure">
+            <img src="assets/movement-accuracy-threshold.png" alt="Target and actual trajectory with threshold gap status line" loading="eager" />
+            <figcaption>Threshold-based Movement Accuracy: the green/red status line shows whether the actual trajectory stays inside the acceptable gap from the target curve.</figcaption>
+          </figure>
+          <figure class="formula-figure">
+            <img src="assets/recovery-penalty-reset.png" alt="Target and actual trajectory with accumulated gap penalty and fast reset" loading="eager" />
+            <figcaption>Recovery-aware Error Timeline: sustained gaps accumulate penalty, while fast recovery resets the penalty and avoids treating short deviations as long failures.</figcaption>
+          </figure>
+        </article>
+      </div>
+
+      <div class="metric-strip" aria-label="Trajectory quality scores">
+        <article class="mini-score">
+          <span>Accuracy@5mm</span>
+          <strong id="accuracy-5">--</strong>
+          <span>strict movement tolerance</span>
+        </article>
+        <article class="mini-score">
+          <span>Accuracy@10mm</span>
+          <strong id="accuracy-10">--</strong>
+          <span>primary tolerance</span>
+        </article>
+        <article class="mini-score">
+          <span>Accuracy@20mm</span>
+          <strong id="accuracy-20">--</strong>
+          <span>relaxed tolerance</span>
+        </article>
+        <article class="mini-score">
+          <span>Recovery-aware Error Timeline</span>
+          <strong id="recovery-score">--</strong>
+          <span>closer to 1 is better</span>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="card chart-card wide-chart">
+          <h3>Actual vs Ideal TCP Overlay</h3>
+          <p class="muted small">X, Y, and Z are stacked as separate channels. In each channel, the real TCP trace and the command-inferred ideal trace share the same axis.</p>
+          <div class="chart-wrap"><canvas id="ideal-actual-chart" aria-label="Actual and ideal TCP overlay chart"></canvas></div>
+        </article>
+        <article class="card chart-card">
+          <h3>Metric: Threshold-based Movement Accuracy</h3>
+          <p class="muted small">Accuracy is scanned across multiple thresholds instead of reporting a single cold number.</p>
+          <div class="chart-wrap"><canvas id="accuracy-threshold-chart" aria-label="Movement accuracy threshold curve"></canvas></div>
+        </article>
+        <article class="card chart-card">
+          <h3>Metric: Recovery-aware Error Timeline</h3>
+          <p class="muted small">The 10 mm threshold marks deviation episodes; long consecutive episodes reduce the recovery-aware score.</p>
+          <div class="chart-wrap"><canvas id="recovery-error-chart" aria-label="Recovery-aware trajectory error chart"></canvas></div>
+        </article>
+      </div>
+
+      <p class="analysis-note" id="trajectory-interpretation">Loading trajectory quality interpretation...</p>
+    </section>
+
+    <section class="replay-section" aria-labelledby="replay-title">
+      <h2 id="replay-title">UR5e Evidence Replay</h2>
+      <p class="muted">The replay brackets each high-risk timing case with the nearest real joint snapshots, so the evaluation can show the robot posture before the issue, at the critical moment, and after recovery.</p>
+      <div class="replay-guide" aria-label="Replay explanation">
+        <span><strong>Joint replay</strong>The URDF arm is driven by the logged q0-q5 joint states, so each frame shows the recorded UR5e posture.</span>
+        <span><strong>Error markers</strong>Orange path dots are frames above 10 mm tracking error; red dots are above 20 mm.</span>
+        <span><strong>Risk frame</strong>When the current frame is high-error, the 3D frame and error badge turn red to make the problem pose easy to spot.</span>
+      </div>
+      <div class="replay-layout">
+        <div class="replay-stage" id="robot-replay-stage">
+          <div id="robot-replay-viewer" role="img" aria-label="Three-dimensional UR5e joint replay"></div>
+          <div class="replay-hud">
+            <span class="pill" id="replay-model-status">URDF loading</span>
+            <span class="pill" id="replay-frame-status">Frame --</span>
+            <span class="pill" id="replay-time-status">t --</span>
+            <span class="pill" id="replay-error-status">error --</span>
+          </div>
+          <div class="replay-label" id="replay-label-before"><strong>Before</strong><span>waiting for data</span></div>
+          <div class="replay-label" id="replay-label-critical"><strong>Critical</strong><span>waiting for data</span></div>
+          <div class="replay-label" id="replay-label-after"><strong>After</strong><span>waiting for data</span></div>
+        </div>
+        <div class="replay-side">
+          <div>
+            <h3>Critical Case</h3>
+            <select class="select-control" id="replay-case-select" aria-label="Select critical replay case">
+              <option>Loading critical cases...</option>
+            </select>
+          </div>
+          <div class="replay-controls" aria-label="Replay controls">
+            <button type="button" id="replay-prev">Prev</button>
+            <button type="button" id="replay-play">Play</button>
+            <button type="button" id="replay-next">Next</button>
+            <label class="range-control">
+              Speed
+              <input id="replay-speed" type="range" min="0.25" max="3" step="0.25" value="1" />
+            </label>
+          </div>
+          <dl class="replay-facts">
+            <dt>Command</dt><dd id="replay-command">--</dd>
+            <dt>RTT</dt><dd id="replay-rtt">--</dd>
+            <dt>Motion lag</dt><dd id="replay-lag">--</dd>
+            <dt>Tracking error</dt><dd id="replay-error">--</dd>
+            <dt>Error band</dt><dd id="replay-error-band">--</dd>
+            <dt>TCP pose</dt><dd id="replay-pose">--</dd>
+          </dl>
+          <p class="analysis-note" id="replay-note">Waiting for critical pose data...</p>
+          <div class="joint-readout" id="replay-joints" aria-label="Current joint state"></div>
+        </div>
       </div>
     </section>
 
@@ -288,6 +808,7 @@
     };
     const round = value => Math.round(value);
     const fmtMs = value => `${round(value)} ms`;
+    const fmtPct = value => `${Math.round(value * 1000) / 10}%`;
 
     function stats(values) {
       const sorted = values.filter(Number.isFinite).slice().sort((a, b) => a - b);
@@ -295,6 +816,9 @@
       const mean = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
       return { count: sorted.length, min: sorted[0], median: pick(.5), mean, p95: pick(.95), max: sorted[sorted.length - 1] };
     }
+    const safeStats = values => values.filter(Number.isFinite).length
+      ? stats(values)
+      : { count: 0, min: 0, median: 0, mean: 0, p95: 0, max: 0 };
 
     function canvasContext(canvas) {
       const rect = canvas.getBoundingClientRect();
@@ -422,31 +946,650 @@
       ctx.fillText(`${maxCount}`, 10, plot.top + 4);
     }
 
+    function distance3(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
+
+    function analyseMotion(tcpRows, opRows, jointRows) {
+      const tcp = tcpRows.map(row => ({
+        t: number(row.t_ms),
+        x: number(row.x),
+        y: number(row.y),
+        z: number(row.z)
+      })).filter(p => [p.t, p.x, p.y, p.z].every(Number.isFinite)).sort((a, b) => a.t - b.t);
+      const operations = opRows.map(row => ({
+        t: number(row.t_ms),
+        type: row.type || 'unknown'
+      })).filter(op => Number.isFinite(op.t)).sort((a, b) => a.t - b.t);
+
+      const distances = [];
+      const speedSamples = [];
+      for (let i = 1; i < tcp.length; i += 1) {
+        const dt = (tcp[i].t - tcp[i - 1].t) / 1000;
+        const d = distance3(tcp[i], tcp[i - 1]);
+        distances.push(d);
+        if (dt > 0) speedSamples.push({ t: (tcp[i].t + tcp[i - 1].t) / 2, speed_mm_s: (d / dt) * 1000 });
+      }
+
+      const opTimes = operations.map(op => op.t);
+      const intervals = [];
+      for (let i = 1; i < opTimes.length; i += 1) intervals.push(opTimes[i] - opTimes[i - 1]);
+
+      const lags = [];
+      const lagEvents = [];
+      let cursor = 0;
+      for (const op of operations) {
+        while (cursor + 1 < tcp.length && tcp[cursor + 1].t <= op.t) cursor += 1;
+        const origin = tcp[cursor];
+        if (!origin) continue;
+        for (let j = cursor + 1; j < tcp.length; j += 1) {
+          const lag = tcp[j].t - op.t;
+          if (lag > 3000) break;
+          if (lag >= 0 && distance3(origin, tcp[j]) >= 0.0005) {
+            lags.push(lag);
+            lagEvents.push({
+              t: op.t,
+              type: op.type,
+              lag_ms: lag,
+              pose: origin,
+              next_pose: tcp[j]
+            });
+            break;
+          }
+        }
+      }
+
+      const jointRanges = Array.from({ length: 6 }, (_, i) => {
+        const vals = jointRows.map(row => number(row[`q${i}_deg`])).filter(Number.isFinite);
+        return vals.length ? Math.max(...vals) - Math.min(...vals) : 0;
+      });
+
+      const firstOperation = Math.min(...opTimes);
+      const baseline = tcp.filter(point => point.t < firstOperation);
+      const baselineSteps = [];
+      for (let i = 1; i < baseline.length; i += 1) baselineSteps.push(distance3(baseline[i], baseline[i - 1]) * 1000);
+
+      return {
+        tcp_count: tcp.length,
+        operation_count: operations.length,
+        joint_count: jointRows.length,
+        start_t: tcp[0]?.t || 0,
+        duration_ms: tcp.length > 1 ? tcp[tcp.length - 1].t - tcp[0].t : 0,
+        total_path_m: distances.reduce((sum, d) => sum + d, 0),
+        net_displacement_m: tcp.length > 1 ? distance3(tcp[0], tcp[tcp.length - 1]) : 0,
+        step_stats_mm: safeStats(distances.map(d => d * 1000)),
+        speed_stats_mm_s: safeStats(speedSamples.map(sample => sample.speed_mm_s)),
+        interval_stats_ms: safeStats(intervals),
+        lag_stats_ms: safeStats(lags),
+        baseline_jitter_p95_mm: safeStats(baselineSteps).p95,
+        joint_ranges_deg: jointRanges,
+        lags,
+        lag_events: lagEvents,
+        tcp_points: tcp,
+        speed_samples: speedSamples
+      };
+    }
+
+    function nearestByNorm(points, norm) {
+      if (!points.length) return null;
+      let best = points[0];
+      let bestDelta = Math.abs(points[0].norm - norm);
+      for (const point of points) {
+        const delta = Math.abs(point.norm - norm);
+        if (delta < bestDelta) {
+          best = point;
+          bestDelta = delta;
+        }
+      }
+      return best;
+    }
+
+    function buildCriticalPoseCases(rttRows, cmdRows, motion, rtt, cmd) {
+      const rttPoints = rttRows
+        .map(row => ({ t: number(row.ts), value: number(row.rtt_ms) }))
+        .filter(point => point.t !== null && point.value !== null);
+      const cmdPoints = cmdRows
+        .map(row => ({ t: number(row.ts), value: number(row.relay_rtt_ms), type: row.cmd_type || 'command' }))
+        .filter(point => point.t !== null && point.value !== null);
+      const rttMaxT = Math.max(...rttPoints.map(point => point.t));
+      const cmdMaxT = Math.max(...cmdPoints.map(point => point.t));
+      const rttNorm = rttPoints.map(point => ({ ...point, norm: rttMaxT ? point.t / rttMaxT : 0 }));
+      const cmdNorm = cmdPoints.map(point => ({ ...point, norm: cmdMaxT ? point.t / cmdMaxT : 0 }));
+      const speedNorm = motion.speed_samples.map(sample => ({
+        ...sample,
+        norm: motion.duration_ms ? (sample.t - motion.start_t) / motion.duration_ms : 0,
+        value: sample.speed_mm_s
+      }));
+
+      const candidates = motion.lag_events.map(event => {
+        const norm = Math.min(1, Math.max(0, (event.t - motion.start_t) / (motion.duration_ms || 1)));
+        const rttNear = nearestByNorm(rttNorm, norm) || { value: rtt.median };
+        const cmdNear = nearestByNorm(cmdNorm, norm) || { value: cmd.median, type: event.type };
+        const speedNear = nearestByNorm(speedNorm, norm) || { value: motion.speed_stats_mm_s.median };
+        const score =
+          (rttNear.value / Math.max(1, rtt.p95)) +
+          (cmdNear.value / Math.max(1, cmd.p95)) +
+          (event.lag_ms / Math.max(1, motion.lag_stats_ms.p95)) +
+          (speedNear.value / Math.max(1, motion.speed_stats_mm_s.p95)) * 0.35;
+        return {
+          norm,
+          score,
+          t_ms: event.t,
+          pose_t_ms: event.pose.t,
+          type: event.type,
+          pose: event.pose,
+          next_pose: event.next_pose,
+          lag_ms: event.lag_ms,
+          rtt_ms: rttNear.value,
+          command_delay_ms: cmdNear.value,
+          command_type: cmdNear.type || event.type,
+          tcp_speed_mm_s: speedNear.value
+        };
+      });
+
+      const selected = [];
+      for (const candidate of candidates.sort((a, b) => b.score - a.score)) {
+        if (selected.every(item => Math.abs(item.norm - candidate.norm) > 0.035)) selected.push(candidate);
+        if (selected.length === 4) break;
+      }
+      return selected.map((item, index) => ({ ...item, rank: index + 1, explanation: explainCriticalCase(item, rtt, cmd, motion) }));
+    }
+
+    function explainCriticalCase(item, rtt, cmd, motion) {
+      const flags = [];
+      if (item.rtt_ms >= rtt.p95) flags.push(`RTT is in the tail (${fmtMs(item.rtt_ms)} vs P95 ${fmtMs(rtt.p95)})`);
+      if (item.command_delay_ms >= cmd.p95) flags.push(`command acknowledgement is high (${fmtMs(item.command_delay_ms)} vs P95 ${fmtMs(cmd.p95)})`);
+      if (item.lag_ms >= motion.lag_stats_ms.p95) flags.push(`motion response is in the tail (${fmtMs(item.lag_ms)} vs P95 ${fmtMs(motion.lag_stats_ms.p95)})`);
+      if (!flags.length) flags.push('combined timing score is high because several moderate delays overlap');
+      const pose = `TCP pose x=${item.pose.x.toFixed(3)}, y=${item.pose.y.toFixed(3)}, z=${item.pose.z.toFixed(3)} m`;
+      return `${flags.join('; ')}. At this ${pose}, the robot is a useful test case for whether the controller should slow down, wait for acknowledgement, or request operator confirmation.`;
+    }
+
+    function buildLocalBackendSummary(evaluation, cases) {
+      const m = evaluation.metrics || {};
+      const firstCase = cases[0] || {};
+      return [
+        `System-generated summary: ${evaluation.assessment?.label || 'timing assessment ready'}.`,
+        `The strongest combined evidence is the Physical Response Risk Window of ${m.physical_response_risk_window_ms} ms, combining network tail delay with physical command-to-motion response.`,
+        `The RTT P95 is ${m.p95_rtt_ms} ms and the command-delay P95 is ${m.p95_command_delay_ms} ms, while the physical motion response P95 is ${m.p95_motion_response_ms} ms.`,
+        firstCase.pose ? `Representative critical pose: ${firstCase.command_type} at TCP x=${firstCase.pose.x.toFixed(3)}, y=${firstCase.pose.y.toFixed(3)}, z=${firstCase.pose.z.toFixed(3)} m.` : '',
+        'This summary is generated from fixed backend-style metrics only; there is no visitor text input or file upload path.'
+      ].filter(Boolean).join('\n');
+    }
+
+    async function loadBackendInsights(evaluation, cases) {
+      const output = document.getElementById('backend-insight');
+      if (!output) return;
+      const endpoint = window.SONAIR_BACKEND_INSIGHTS_URL || '';
+      output.textContent = buildLocalBackendSummary(evaluation, cases);
+      if (!endpoint) return;
+      try {
+        const response = await fetch(endpoint, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`backend returned HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.summary) output.textContent = data.summary;
+        if (data.insights && Array.isArray(data.insights)) output.textContent = data.insights.join('\n');
+      } catch (err) {
+        output.dataset.backendStatus = `unavailable: ${err.message}`;
+      }
+    }
+
+    function drawMotionRiskChart(canvas, rttRows, motion) {
+      const { ctx, width, height } = canvasContext(canvas);
+      const plot = { left: 52, top: 22, width: width - 78, height: height - 62 };
+      const binCount = 56;
+      const bins = Array.from({ length: binCount }, () => ({ rtt_sum: 0, rtt_count: 0, speed: 0 }));
+      const rttPoints = rttRows
+        .map(row => ({ t: number(row.ts), rtt: number(row.rtt_ms) }))
+        .filter(point => point.t !== null && point.rtt !== null);
+      const rttMaxTime = Math.max(...rttPoints.map(point => point.t));
+      rttPoints.forEach(point => {
+        const idx = Math.min(binCount - 1, Math.max(0, Math.floor((point.t / rttMaxTime) * (binCount - 1))));
+        bins[idx].rtt_sum += point.rtt;
+        bins[idx].rtt_count += 1;
+      });
+      motion.speed_samples.forEach(sample => {
+        const norm = motion.duration_ms ? (sample.t - motion.start_t) / motion.duration_ms : 0;
+        const idx = Math.min(binCount - 1, Math.max(0, Math.floor(norm * (binCount - 1))));
+        bins[idx].speed = Math.max(bins[idx].speed, sample.speed_mm_s);
+      });
+
+      const rttMax = Math.max(1, ...bins.map(bin => bin.rtt_count ? bin.rtt_sum / bin.rtt_count : 0));
+      const speedMax = Math.max(1, ...bins.map(bin => bin.speed));
+      const x = index => plot.left + (index / (binCount - 1)) * plot.width;
+      const y = (value, max) => plot.top + plot.height - (value / max) * plot.height;
+
+      drawAxes(ctx, width, height, plot);
+      ctx.font = '12px system-ui';
+      ctx.fillStyle = 'rgba(232,242,250,.72)';
+      ctx.fillText('normalised session progress', plot.left, height - 16);
+      ctx.fillText(`${round(rttMax)} ms RTT`, 8, plot.top + 4);
+      ctx.fillText(`${round(speedMax)} mm/s TCP`, width - 118, plot.top + 4);
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#7DD3FC';
+      ctx.beginPath();
+      bins.forEach((bin, index) => {
+        const value = bin.rtt_count ? bin.rtt_sum / bin.rtt_count : null;
+        if (value === null) return;
+        const px = x(index);
+        const py = y(value, rttMax);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#A7F3D0';
+      ctx.beginPath();
+      bins.forEach((bin, index) => {
+        const px = x(index);
+        const py = y(bin.speed, speedMax);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#7DD3FC';
+      ctx.fillText('RTT', plot.left + 8, plot.top + 18);
+      ctx.fillStyle = '#A7F3D0';
+      ctx.fillText('TCP speed', plot.left + 50, plot.top + 18);
+    }
+
+    function drawLagHistogram(canvas, lags) {
+      const { ctx, width, height } = canvasContext(canvas);
+      const plot = { left: 46, top: 20, width: width - 64, height: height - 58 };
+      const values = lags.filter(Number.isFinite);
+      const binSize = 100;
+      const maxValue = Math.max(binSize, Math.ceil(Math.max(...values, binSize) / binSize) * binSize);
+      const bins = Array.from({ length: Math.ceil(maxValue / binSize) + 1 }, (_, i) => ({ start: i * binSize, count: 0 }));
+      values.forEach(value => { bins[Math.min(bins.length - 1, Math.floor(value / binSize))].count += 1; });
+      const maxCount = Math.max(1, ...bins.map(bin => bin.count));
+
+      drawAxes(ctx, width, height, plot);
+      const barGap = 2;
+      const barWidth = Math.max(2, plot.width / bins.length - barGap);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--warning').trim() || '#FBBF24';
+      bins.forEach((bin, index) => {
+        const h = (bin.count / maxCount) * plot.height;
+        ctx.fillRect(plot.left + index * (plot.width / bins.length), plot.top + plot.height - h, barWidth, h);
+      });
+      ctx.fillStyle = 'rgba(232,242,250,.72)';
+      ctx.font = '12px system-ui';
+      ctx.fillText('0 ms', plot.left, height - 16);
+      ctx.fillText(`${maxValue} ms`, plot.left + plot.width - 56, height - 16);
+      ctx.fillText(`${maxCount}`, 10, plot.top + 4);
+    }
+
+    function parseCommandPayload(row) {
+      try {
+        return JSON.parse(row.payload_json || '{}');
+      } catch (err) {
+        return {};
+      }
+    }
+
+    function analyseTrajectoryQuality(tcpRows, opRows) {
+      const tcp = tcpRows.map(row => ({
+        t: number(row.t_ms),
+        x: number(row.x),
+        y: number(row.y),
+        z: number(row.z)
+      })).filter(point => [point.t, point.x, point.y, point.z].every(Number.isFinite)).sort((a, b) => a.t - b.t);
+      const commands = opRows.map(row => {
+        const payload = parseCommandPayload(row);
+        const xd = Array.isArray(payload.xd) ? payload.xd.map(number) : null;
+        let velocity = xd && xd.slice(0, 3).every(Number.isFinite) ? xd.slice(0, 3) : null;
+        const type = row.type || payload.type || 'command';
+        if (!velocity && type.includes('stop')) velocity = [0, 0, 0];
+        return { t: number(row.t_ms), type, velocity };
+      }).filter(command => Number.isFinite(command.t)).sort((a, b) => a.t - b.t);
+
+      const samples = [];
+      let activeVelocity = [0, 0, 0];
+      let cursor = 0;
+      for (let i = 1; i < tcp.length; i += 1) {
+        const previous = tcp[i - 1];
+        const actual = tcp[i];
+        while (cursor < commands.length && commands[cursor].t <= previous.t) {
+          if (commands[cursor].velocity) activeVelocity = commands[cursor].velocity.slice();
+          cursor += 1;
+        }
+
+        let localCursor = cursor;
+        let localVelocity = activeVelocity.slice();
+        let segmentStart = previous.t;
+        const ideal = { x: previous.x, y: previous.y, z: previous.z };
+        while (localCursor < commands.length && commands[localCursor].t <= actual.t) {
+          const changeT = Math.max(segmentStart, commands[localCursor].t);
+          if (changeT > segmentStart) {
+            const dt = (changeT - segmentStart) / 1000;
+            ideal.x += localVelocity[0] * dt;
+            ideal.y += localVelocity[1] * dt;
+            ideal.z += localVelocity[2] * dt;
+            segmentStart = changeT;
+          }
+          if (commands[localCursor].velocity) localVelocity = commands[localCursor].velocity.slice();
+          localCursor += 1;
+        }
+        if (actual.t > segmentStart) {
+          const dt = (actual.t - segmentStart) / 1000;
+          ideal.x += localVelocity[0] * dt;
+          ideal.y += localVelocity[1] * dt;
+          ideal.z += localVelocity[2] * dt;
+        }
+        const errorM = distance3(actual, ideal);
+        samples.push({
+          t: actual.t,
+          norm: tcp.length > 1 ? (actual.t - tcp[0].t) / (tcp[tcp.length - 1].t - tcp[0].t || 1) : 0,
+          actual,
+          ideal,
+          error_m: errorM,
+          error_mm: errorM * 1000
+        });
+      }
+
+      const thresholdsMm = [1, 2, 5, 10, 20, 50];
+      const errorsM = samples.map(sample => sample.error_m);
+      const errorsMm = samples.map(sample => sample.error_mm);
+      const thresholdCurve = thresholdsMm.map(thresholdMm => ({
+        threshold_mm: thresholdMm,
+        accuracy: samples.length ? samples.filter(sample => sample.error_mm <= thresholdMm).length / samples.length : 0
+      }));
+      const primaryThresholdM = 0.01;
+      const bad = errorsM.map(error => error > primaryThresholdM);
+      const segmentLengths = [];
+      let current = 0;
+      for (const isBad of bad) {
+        if (isBad) current += 1;
+        else if (current) {
+          segmentLengths.push(current);
+          current = 0;
+        }
+      }
+      if (current) segmentLengths.push(current);
+
+      const total = Math.max(1, errorsM.length);
+      const meanNormalizedError = errorsM.reduce((sum, error) => sum + Math.min(error / primaryThresholdM, 1), 0) / total;
+      const tailErrorRate = bad.filter(Boolean).length / total;
+      const consecutivePenalty = segmentLengths.reduce((sum, length) => sum + length * length, 0) / (total * total);
+      const recoveryDeviationScore = (0.4 * meanNormalizedError) + (0.3 * tailErrorRate) + (0.3 * consecutivePenalty);
+      const recoveryScore = Math.max(0, Math.min(1, 1 - recoveryDeviationScore));
+
+      return {
+        sample_count: samples.length,
+        command_count: commands.length,
+        velocity_command_count: commands.filter(command => command.velocity).length,
+        primary_threshold_mm: 10,
+        samples,
+        threshold_curve: thresholdCurve,
+        error_stats_mm: safeStats(errorsMm),
+        accuracy_at_5mm: thresholdCurve.find(item => item.threshold_mm === 5)?.accuracy || 0,
+        accuracy_at_10mm: thresholdCurve.find(item => item.threshold_mm === 10)?.accuracy || 0,
+        accuracy_at_20mm: thresholdCurve.find(item => item.threshold_mm === 20)?.accuracy || 0,
+        mean_normalized_error: meanNormalizedError,
+        tail_error_rate: tailErrorRate,
+        consecutive_error_penalty: consecutivePenalty,
+        recovery_deviation_score: recoveryDeviationScore,
+        recovery_score: recoveryScore,
+        longest_error_segment_samples: segmentLengths.length ? Math.max(...segmentLengths) : 0,
+        error_segment_count: segmentLengths.length
+      };
+    }
+
+    function drawAccuracyThresholdChart(canvas, trajectory) {
+      const { ctx, width, height } = canvasContext(canvas);
+      const plot = { left: 54, top: 24, width: width - 82, height: height - 64 };
+      const points = trajectory.threshold_curve;
+      const xMin = 0;
+      const xMax = Math.max(...points.map(point => point.threshold_mm), 50);
+      const x = value => plot.left + ((value - xMin) / (xMax - xMin)) * plot.width;
+      const y = value => plot.top + plot.height - value * plot.height;
+
+      drawAxes(ctx, width, height, plot);
+      ctx.fillStyle = 'rgba(232,242,250,.72)';
+      ctx.font = '12px system-ui';
+      ctx.fillText('0 mm', plot.left, height - 16);
+      ctx.fillText(`${xMax} mm`, plot.left + plot.width - 42, height - 16);
+      ctx.fillText('100%', 8, plot.top + 4);
+      ctx.fillText('0%', 20, plot.top + plot.height);
+
+      const gradient = ctx.createLinearGradient(0, plot.top, 0, plot.top + plot.height);
+      gradient.addColorStop(0, 'rgba(125,211,252,.30)');
+      gradient.addColorStop(1, 'rgba(125,211,252,0)');
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const px = x(point.threshold_mm);
+        const py = y(point.accuracy);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.lineTo(x(points[points.length - 1].threshold_mm), plot.top + plot.height);
+      ctx.lineTo(x(points[0].threshold_mm), plot.top + plot.height);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#7DD3FC';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const px = x(point.threshold_mm);
+        const py = y(point.accuracy);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      points.forEach(point => {
+        const px = x(point.threshold_mm);
+        const py = y(point.accuracy);
+        ctx.fillStyle = point.threshold_mm === 10 ? '#FBBF24' : '#A7F3D0';
+        ctx.beginPath();
+        ctx.arc(px, py, point.threshold_mm === 10 ? 6 : 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(232,242,250,.82)';
+        ctx.font = '11px system-ui';
+        ctx.fillText(`${point.threshold_mm}mm`, px - 12, py - 10);
+        ctx.fillText(fmtPct(point.accuracy), px - 16, py + 20);
+      });
+    }
+
+    function drawRecoveryErrorChart(canvas, trajectory) {
+      const { ctx, width, height } = canvasContext(canvas);
+      const plot = { left: 54, top: 24, width: width - 82, height: height - 64 };
+      const samples = trajectory.samples;
+      const maxError = Math.max(trajectory.primary_threshold_mm * 2, Math.ceil(trajectory.error_stats_mm.p95 / 5) * 5, 20);
+      const x = index => plot.left + (index / Math.max(1, samples.length - 1)) * plot.width;
+      const y = value => plot.top + plot.height - (Math.min(value, maxError) / maxError) * plot.height;
+
+      drawAxes(ctx, width, height, plot);
+      const thresholdY = y(trajectory.primary_threshold_mm);
+      ctx.strokeStyle = 'rgba(251,191,36,.78)';
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(plot.left, thresholdY);
+      ctx.lineTo(plot.left + plot.width, thresholdY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#FBBF24';
+      ctx.font = '12px system-ui';
+      ctx.fillText('10 mm threshold', plot.left + 8, thresholdY - 8);
+
+      const bucketCount = Math.min(150, samples.length);
+      const buckets = Array.from({ length: bucketCount }, (_, index) => {
+        const start = Math.floor(index * samples.length / bucketCount);
+        const end = Math.max(start + 1, Math.floor((index + 1) * samples.length / bucketCount));
+        const values = samples.slice(start, end).map(sample => sample.error_mm);
+        return { value: Math.max(...values), bad: values.some(value => value > trajectory.primary_threshold_mm) };
+      });
+      const bx = index => plot.left + (index / Math.max(1, bucketCount - 1)) * plot.width;
+
+      buckets.forEach((bucket, index) => {
+        if (!bucket.bad) return;
+        const barWidth = Math.max(2, plot.width / bucketCount);
+        ctx.fillStyle = 'rgba(251,191,36,.12)';
+        ctx.fillRect(bx(index), plot.top, barWidth, plot.height);
+      });
+
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#A7F3D0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      buckets.forEach((bucket, index) => {
+        const px = bx(index);
+        const py = y(bucket.value);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(232,242,250,.72)';
+      ctx.font = '12px system-ui';
+      ctx.fillText('session progress', plot.left, height - 16);
+      ctx.fillText(`${maxError} mm`, 8, plot.top + 4);
+      ctx.fillText(`longest segment: ${trajectory.longest_error_segment_samples} samples`, plot.left + plot.width - 160, height - 16);
+    }
+
+    function drawIdealActualChart(canvas, trajectory) {
+      const { ctx, width, height } = canvasContext(canvas);
+      const plot = { left: 64, top: 24, width: width - 92, height: height - 58 };
+      const axes = [
+        { key: 'x', label: 'TCP X' },
+        { key: 'y', label: 'TCP Y' },
+        { key: 'z', label: 'TCP Z' }
+      ];
+      const samples = trajectory.samples;
+      if (!samples.length) return;
+      const base = {
+        x: samples[0].actual.x,
+        y: samples[0].actual.y,
+        z: samples[0].actual.z
+      };
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = '12px system-ui';
+      ctx.fillStyle = 'rgba(232,242,250,.72)';
+      ctx.fillText('session progress', plot.left, height - 14);
+      ctx.fillStyle = '#7DD3FC';
+      ctx.fillText('actual TCP', plot.left + 130, height - 14);
+      ctx.fillStyle = '#FBBF24';
+      ctx.fillText('ideal from command speed', plot.left + 212, height - 14);
+
+      axes.forEach((axis, axisIndex) => {
+        const bandTop = plot.top + axisIndex * (plot.height / axes.length);
+        const bandHeight = (plot.height / axes.length) - 18;
+        const actualValues = samples.map(sample => (sample.actual[axis.key] - base[axis.key]) * 1000);
+        const idealValues = samples.map(sample => (sample.ideal[axis.key] - base[axis.key]) * 1000);
+        const values = actualValues.concat(idealValues);
+        const rawMin = Math.min(...values);
+        const rawMax = Math.max(...values);
+        const span = Math.max(1, rawMax - rawMin);
+        const min = rawMin - span * 0.12;
+        const max = rawMax + span * 0.12;
+        const x = index => plot.left + (index / Math.max(1, samples.length - 1)) * plot.width;
+        const y = value => bandTop + bandHeight - ((value - min) / (max - min || 1)) * bandHeight;
+
+        ctx.strokeStyle = 'rgba(255,255,255,.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(plot.left, bandTop);
+        ctx.lineTo(plot.left + plot.width, bandTop);
+        ctx.moveTo(plot.left, bandTop + bandHeight / 2);
+        ctx.lineTo(plot.left + plot.width, bandTop + bandHeight / 2);
+        ctx.moveTo(plot.left, bandTop + bandHeight);
+        ctx.lineTo(plot.left + plot.width, bandTop + bandHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = '#E8F2FA';
+        ctx.font = 'bold 13px system-ui';
+        ctx.fillText(axis.label, 10, bandTop + bandHeight / 2 + 4);
+        ctx.fillStyle = 'rgba(232,242,250,.68)';
+        ctx.font = '11px system-ui';
+        ctx.fillText(`${max.toFixed(1)} mm`, plot.left + 4, bandTop + 12);
+        ctx.fillText(`${min.toFixed(1)} mm`, plot.left + 4, bandTop + bandHeight - 4);
+
+        ctx.strokeStyle = '#7DD3FC';
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        actualValues.forEach((value, index) => {
+          const px = x(index);
+          const py = y(value);
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+
+        ctx.strokeStyle = '#FBBF24';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        idealValues.forEach((value, index) => {
+          const px = x(index);
+          const py = y(value);
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+    }
+
     async function loadDashboard() {
       const status = document.getElementById('dashboard-status');
       try {
-        const [rttRows, cmdRows, auditRows] = await Promise.all([
+        const [rttRows, cmdRows, auditRows, tcpRows, opRows, jointRows] = await Promise.all([
           fetchData('sonair_ucl_rtt_dataset.csv'),
           fetchData('sonair_ucl_cmd_latency.csv'),
-          fetchData('UCL_session_audit.csv')
+          fetchData('UCL_session_audit.csv'),
+          fetchData('sonair_ur_motion_data/ur_tcp_pose_samples.csv'),
+          fetchData('sonair_ur_motion_data/ur_operations.csv'),
+          fetchData('sonair_ur_motion_data/ur_joint_state_samples.csv')
         ]);
         const rtt = stats(rttRows.map(row => number(row.rtt_ms)));
         const cmd = stats(cmdRows.map(row => number(row.relay_rtt_ms)));
+        const motion = analyseMotion(tcpRows, opRows, jointRows);
+        const trajectory = analyseTrajectoryQuality(tcpRows, opRows);
+        const criticalCases = buildCriticalPoseCases(rttRows, cmdRows, motion, rtt, cmd);
         const tailGap = (rtt.p95 - rtt.median) + (cmd.p95 - cmd.median);
+        const physicalRiskWindow = tailGap + motion.lag_stats_ms.p95;
 
         document.getElementById('rtt-median').textContent = fmtMs(rtt.median);
         document.getElementById('rtt-p95').textContent = fmtMs(rtt.p95);
         document.getElementById('cmd-median').textContent = fmtMs(cmd.median);
         document.getElementById('tail-gap').textContent = fmtMs(tailGap);
         status.innerHTML = `<span class="pill">${rtt.count} RTT samples</span><span class="pill">${cmd.count} command records</span><span class="pill">${auditRows.length} audit events</span>`;
+        document.getElementById('motion-status').innerHTML =
+          `<span class="pill">${motion.tcp_count} TCP samples</span>` +
+          `<span class="pill">${motion.operation_count} robot operations</span>` +
+          `<span class="pill">${motion.joint_count} joint snapshots</span>`;
+        document.getElementById('motion-lag').textContent = fmtMs(motion.lag_stats_ms.median);
+        document.getElementById('tcp-path').textContent = `${motion.total_path_m.toFixed(2)} m`;
+        document.getElementById('tcp-speed').textContent = `${round(motion.speed_stats_mm_s.max)} mm/s`;
+        document.getElementById('physical-risk').textContent = fmtMs(physicalRiskWindow);
+        document.getElementById('trajectory-status').innerHTML =
+          `<span class="pill">${trajectory.sample_count} trajectory intervals</span>` +
+          `<span class="pill">${trajectory.velocity_command_count} velocity commands</span>` +
+          `<span class="pill">limit = ${trajectory.primary_threshold_mm} mm</span>`;
+        document.getElementById('accuracy-5').textContent = fmtPct(trajectory.accuracy_at_5mm);
+        document.getElementById('accuracy-10').textContent = fmtPct(trajectory.accuracy_at_10mm);
+        document.getElementById('accuracy-20').textContent = fmtPct(trajectory.accuracy_at_20mm);
+        document.getElementById('recovery-score').textContent = trajectory.recovery_score.toFixed(3);
 
         document.getElementById('interpretation').textContent =
           `The session is generally responsive: median RTT is ${fmtMs(rtt.median)} and median command delay is ${fmtMs(cmd.median)}. ` +
           `The tail is more important for trustworthy teleoperation: RTT P95 rises to ${fmtMs(rtt.p95)}, command-delay P95 reaches ${fmtMs(cmd.p95)}, and the largest RTT spike is ${fmtMs(rtt.max)}. ` +
           `For SONAIR, this suggests the sim2real timing gap should be reported as a tail-risk measure, not only as an average latency.`;
         document.getElementById('metric-proposal').textContent =
-          `Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median) = ${fmtMs(tailGap)} for this session. ` +
-          `This gives a compact evidence score for extra real-world delay beyond typical control timing.`;
+          `Tail Timing Gap = ${fmtMs(tailGap)}, and Physical Response Risk Window = tail timing gap + motion-response P95 = ${fmtMs(physicalRiskWindow)}. ` +
+          `This links network delay to the time window in which a physical UR5e movement may still be catching up.`;
+        document.getElementById('motion-interpretation').textContent =
+          `The motion log shows ${motion.total_path_m.toFixed(2)} m of TCP travel across a ${(motion.duration_ms / 1000).toFixed(1)} s physical trace, with peak observed TCP speed of ${round(motion.speed_stats_mm_s.max)} mm/s. ` +
+          `Logged operations arrive at a median interval of ${fmtMs(motion.interval_stats_ms.median)}, but measurable TCP displacement has a median response of ${fmtMs(motion.lag_stats_ms.median)} and P95 of ${fmtMs(motion.lag_stats_ms.p95)}. ` +
+          `Baseline TCP jitter before active operation is only ${motion.baseline_jitter_p95_mm.toFixed(3)} mm P95, so the 0.5 mm response threshold is above the static noise floor.`;
+        document.getElementById('trajectory-interpretation').textContent =
+          `Threshold-based Movement Accuracy reports ${fmtPct(trajectory.accuracy_at_10mm)} at the 10 mm tolerance using a one-step ideal trajectory inferred from speedl linear velocity commands. ` +
+          `The Recovery-aware Error Timeline gives a score of ${trajectory.recovery_score.toFixed(3)} because the mean tracking error is ${trajectory.error_stats_mm.mean.toFixed(2)} mm, P95 error is ${trajectory.error_stats_mm.p95.toFixed(2)} mm, and the longest above-threshold episode lasts ${trajectory.longest_error_segment_samples} samples. ` +
+          `This separates brief recoverable deviations from sustained tracking failure.`;
 
         const evaluation = {
           node_id: 'csmm',
@@ -457,7 +1600,12 @@
             rtt_samples: rtt.count,
             command_records: cmd.count,
             audit_events: auditRows.length,
-            packet_loss_count: rttRows.filter(row => row.lost === '1').length
+            packet_loss_count: rttRows.filter(row => row.lost === '1').length,
+            tcp_samples: motion.tcp_count,
+            robot_operations: motion.operation_count,
+            joint_snapshots: motion.joint_count,
+            trajectory_error_samples: trajectory.sample_count,
+            critical_pose_cases: criticalCases.length
           },
           metrics: {
             median_rtt_ms: round(rtt.median),
@@ -466,30 +1614,108 @@
             median_command_delay_ms: round(cmd.median),
             p95_command_delay_ms: round(cmd.p95),
             max_command_delay_ms: round(cmd.max),
-            tail_timing_gap_ms: round(tailGap)
+            tail_timing_gap_ms: round(tailGap),
+            median_motion_response_ms: round(motion.lag_stats_ms.median),
+            p95_motion_response_ms: round(motion.lag_stats_ms.p95),
+            physical_response_risk_window_ms: round(physicalRiskWindow),
+            tcp_path_m: Number(motion.total_path_m.toFixed(3)),
+            peak_tcp_speed_mm_s: round(motion.speed_stats_mm_s.max),
+            median_operation_interval_ms: round(motion.interval_stats_ms.median),
+            baseline_tcp_jitter_p95_mm: Number(motion.baseline_jitter_p95_mm.toFixed(4)),
+            joint_range_deg: motion.joint_ranges_deg.map(value => Number(value.toFixed(3))),
+            mean_tracking_error_mm: Number(trajectory.error_stats_mm.mean.toFixed(3)),
+            p95_tracking_error_mm: Number(trajectory.error_stats_mm.p95.toFixed(3)),
+            max_tracking_error_mm: Number(trajectory.error_stats_mm.max.toFixed(3)),
+            movement_accuracy_at_5mm_pct: Number((trajectory.accuracy_at_5mm * 100).toFixed(2)),
+            movement_accuracy_at_10mm_pct: Number((trajectory.accuracy_at_10mm * 100).toFixed(2)),
+            movement_accuracy_at_20mm_pct: Number((trajectory.accuracy_at_20mm * 100).toFixed(2)),
+            recovery_aware_trajectory_score: Number(trajectory.recovery_score.toFixed(4)),
+            recovery_aware_deviation_score: Number(trajectory.recovery_deviation_score.toFixed(4)),
+            recovery_tail_error_rate_pct: Number((trajectory.tail_error_rate * 100).toFixed(2)),
+            recovery_consecutive_error_penalty: Number(trajectory.consecutive_error_penalty.toFixed(6)),
+            longest_error_segment_samples: trajectory.longest_error_segment_samples,
+            error_segment_count: trajectory.error_segment_count
           },
+          movement_metrics: {
+            ideal_position_inference: 'Ideal next position = previous actual TCP position + command speed * time gap.',
+            actual_position: 'Actual next position = x, y, z from ur_tcp_pose_samples.csv.',
+            error_definition: 'Tracking error = distance between the actual next position and the ideal next position.',
+            metric_1: {
+              name: 'Threshold-based Movement Accuracy',
+              formula: 'At a chosen millimetre limit, count samples inside the limit and divide by all samples.',
+              thresholds_mm: trajectory.threshold_curve.map(point => point.threshold_mm),
+              accuracy_curve: trajectory.threshold_curve.map(point => ({
+                threshold_mm: point.threshold_mm,
+                accuracy_pct: Number((point.accuracy * 100).toFixed(2))
+              }))
+            },
+            metric_4: {
+              name: 'Recovery-aware Error Timeline',
+              formula: 'Start from 1, then subtract penalties for average error size, above-limit samples, and long repeated error runs.',
+              tolerance_mm: trajectory.primary_threshold_mm,
+              score: Number(trajectory.recovery_score.toFixed(4)),
+              components: {
+                mean_normalized_error: Number(trajectory.mean_normalized_error.toFixed(6)),
+                tail_error_rate: Number(trajectory.tail_error_rate.toFixed(6)),
+                consecutive_error_penalty: Number(trajectory.consecutive_error_penalty.toFixed(6))
+              }
+            }
+          },
+          critical_cases: criticalCases.map(item => ({
+            rank: item.rank,
+            command_type: item.command_type,
+            rtt_ms: round(item.rtt_ms),
+            command_delay_ms: round(item.command_delay_ms),
+            motion_lag_ms: round(item.lag_ms),
+            tcp_speed_mm_s: round(item.tcp_speed_mm_s),
+            pose: {
+              x_m: Number(item.pose.x.toFixed(6)),
+              y_m: Number(item.pose.y.toFixed(6)),
+              z_m: Number(item.pose.z.toFixed(6))
+            },
+            explanation: item.explanation
+          })),
           assessment: {
-            label: 'Responsive with measurable tail latency risk',
+            label: 'Responsive, with measurable network-to-motion tail risk',
             summary: document.getElementById('interpretation').textContent,
-            metric_definition: 'Tail Timing Gap = (RTT P95 - RTT median) + (command P95 - command median)'
+            motion_summary: document.getElementById('motion-interpretation').textContent,
+            trajectory_summary: document.getElementById('trajectory-interpretation').textContent,
+            metric_definition: 'Physical Response Risk Window = Tail Timing Gap + command-to-motion P95'
           }
         };
         window.SONAIR_EVALUATION = evaluation;
+        window.SONAIR_CRITICAL_CASES = criticalCases;
+        window.SONAIR_MOTION_SOURCE = { tcpRows, opRows, jointRows, motion, trajectory };
         document.getElementById('evaluation-status').textContent = 'Evaluation ready';
         document.getElementById('evaluation-summary').textContent =
           `tail_timing_gap_ms=${evaluation.metrics.tail_timing_gap_ms}; ` +
+          `physical_response_risk_window_ms=${evaluation.metrics.physical_response_risk_window_ms}; ` +
+          `movement_accuracy_at_10mm_pct=${evaluation.metrics.movement_accuracy_at_10mm_pct}; ` +
+          `recovery_aware_trajectory_score=${evaluation.metrics.recovery_aware_trajectory_score}; ` +
           `p95_rtt_ms=${evaluation.metrics.p95_rtt_ms}; ` +
           `p95_command_delay_ms=${evaluation.metrics.p95_command_delay_ms}`;
         window.dispatchEvent(new CustomEvent('sonair:evaluation-ready', { detail: evaluation }));
 
         drawRttChart(document.getElementById('rtt-chart'), rttRows, auditRows);
         drawHistogram(document.getElementById('latency-chart'), cmdRows);
+        drawMotionRiskChart(document.getElementById('motion-risk-chart'), rttRows, motion);
+        drawLagHistogram(document.getElementById('motion-lag-chart'), motion.lags);
+        drawIdealActualChart(document.getElementById('ideal-actual-chart'), trajectory);
+        drawAccuracyThresholdChart(document.getElementById('accuracy-threshold-chart'), trajectory);
+        drawRecoveryErrorChart(document.getElementById('recovery-error-chart'), trajectory);
+        loadBackendInsights(evaluation, criticalCases);
         window.addEventListener('resize', () => {
           drawRttChart(document.getElementById('rtt-chart'), rttRows, auditRows);
           drawHistogram(document.getElementById('latency-chart'), cmdRows);
+          drawMotionRiskChart(document.getElementById('motion-risk-chart'), rttRows, motion);
+          drawLagHistogram(document.getElementById('motion-lag-chart'), motion.lags);
+          drawIdealActualChart(document.getElementById('ideal-actual-chart'), trajectory);
+          drawAccuracyThresholdChart(document.getElementById('accuracy-threshold-chart'), trajectory);
+          drawRecoveryErrorChart(document.getElementById('recovery-error-chart'), trajectory);
         });
       } catch (err) {
         status.textContent = `Dataset could not be loaded: ${err.message}`;
+        document.getElementById('motion-status').textContent = `Motion data could not be loaded: ${err.message}`;
         window.SONAIR_EVALUATION = { node_id: 'csmm', status: 'error', error: err.message };
         document.getElementById('evaluation-status').textContent = 'Evaluation error';
         document.getElementById('evaluation-summary').textContent = err.message;
@@ -497,6 +1723,11 @@
     }
 
     window.SONAIR_EVALUATION = { node_id: 'csmm', status: 'loading' };
+    window.SONAIR_CRITICAL_CASES = [];
+    window.SONAIR_BACKEND_INSIGHTS_URL =
+      ['127.0.0.1', 'localhost'].includes(location.hostname)
+        ? 'http://127.0.0.1:8787/api/insights'
+        : '';
     window.addEventListener('message', event => {
       const data = event.data || {};
       if (data.type !== 'SONAIR_EVALUATION_REQUEST') return;
@@ -508,6 +1739,477 @@
     });
 
     loadDashboard();
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import URDFLoader from 'urdf-loader';
+
+    const jointMap = [
+      ['q0', 'shoulder_pan_joint'],
+      ['q1', 'shoulder_lift_joint'],
+      ['q2', 'elbow_joint'],
+      ['q3', 'wrist_1_joint'],
+      ['q4', 'wrist_2_joint'],
+      ['q5', 'wrist_3_joint']
+    ];
+
+    const replayState = {
+      sceneReady: false,
+      dataReady: false,
+      playing: false,
+      speed: 1,
+      frameIndex: 0,
+      lastAdvance: 0,
+      robot: null,
+      pathGroup: null,
+      currentMarker: null,
+      currentPathCenter: null,
+      labelPoints: {},
+      cases: [],
+      selectedCase: null,
+      jointSamples: [],
+      tcpSamples: [],
+      opSamples: [],
+      trajectorySamples: []
+    };
+
+    const replayEls = {
+      stage: document.getElementById('robot-replay-stage'),
+      viewer: document.getElementById('robot-replay-viewer'),
+      modelStatus: document.getElementById('replay-model-status'),
+      frameStatus: document.getElementById('replay-frame-status'),
+      timeStatus: document.getElementById('replay-time-status'),
+      errorStatus: document.getElementById('replay-error-status'),
+      select: document.getElementById('replay-case-select'),
+      prev: document.getElementById('replay-prev'),
+      play: document.getElementById('replay-play'),
+      next: document.getElementById('replay-next'),
+      speed: document.getElementById('replay-speed'),
+      command: document.getElementById('replay-command'),
+      rtt: document.getElementById('replay-rtt'),
+      lag: document.getElementById('replay-lag'),
+      error: document.getElementById('replay-error'),
+      errorBand: document.getElementById('replay-error-band'),
+      pose: document.getElementById('replay-pose'),
+      note: document.getElementById('replay-note'),
+      joints: document.getElementById('replay-joints'),
+      labels: {
+        before: document.getElementById('replay-label-before'),
+        critical: document.getElementById('replay-label-critical'),
+        after: document.getElementById('replay-label-after')
+      }
+    };
+
+    const n = value => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const replayMs = value => Number.isFinite(value) ? `${Math.round(value)} ms` : '--';
+    const replayDeg = value => Number.isFinite(value) ? `${value.toFixed(1)} deg` : '--';
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+    const byTime = (a, b) => a.t - b.t;
+    const dist3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+
+    function replayErrorBand(errorMm) {
+      if (!Number.isFinite(errorMm)) return 'unknown';
+      if (errorMm > 20) return 'high';
+      if (errorMm > 10) return 'warning';
+      return 'ok';
+    }
+
+    function replayErrorLabel(errorMm) {
+      const band = replayErrorBand(errorMm);
+      if (band === 'high') return 'high error';
+      if (band === 'warning') return 'above 10mm';
+      if (band === 'ok') return 'within limit';
+      return 'unknown';
+    }
+
+    function replayRiskClass(errorMm) {
+      const band = replayErrorBand(errorMm);
+      return band === 'high' ? 'risk-high' : band === 'warning' ? 'risk-warning' : 'risk-ok';
+    }
+
+    function setRiskClass(element, errorMm) {
+      if (!element) return;
+      element.classList.remove('risk-ok', 'risk-warning', 'risk-high');
+      element.classList.add(replayRiskClass(errorMm));
+    }
+
+    function nearestByTime(rows, t) {
+      if (!rows.length) return null;
+      let best = rows[0];
+      let bestDelta = Math.abs(rows[0].t - t);
+      for (const row of rows) {
+        const delta = Math.abs(row.t - t);
+        if (delta < bestDelta) {
+          best = row;
+          bestDelta = delta;
+        }
+      }
+      return best;
+    }
+
+    function nearestByPose(rows, pose) {
+      if (!rows.length || !pose) return null;
+      let best = rows[0];
+      let bestDistance = dist3(rows[0], pose);
+      for (const row of rows) {
+        const distance = dist3(row, pose);
+        if (distance < bestDistance) {
+          best = row;
+          bestDistance = distance;
+        }
+      }
+      return best;
+    }
+
+    async function firstReachable(paths) {
+      let lastError;
+      for (const path of paths) {
+        try {
+          const response = await fetch(path, { cache: 'no-store' });
+          if (response.ok) return path;
+          lastError = new Error(`${path} returned ${response.status}`);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError || new Error('No robot model path found');
+    }
+
+    function setupScene() {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x05090e);
+
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 50);
+      camera.position.set(1.2, 0.85, 1.25);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      replayEls.viewer.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.target.set(0.35, 0.18, 0);
+
+      scene.add(new THREE.HemisphereLight(0xdcefff, 0x141922, 2.4));
+      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      key.position.set(2.4, 3.1, 2.2);
+      scene.add(key);
+
+      const grid = new THREE.GridHelper(1.8, 18, 0x31556a, 0x1c2b36);
+      grid.position.y = -0.002;
+      scene.add(grid);
+
+      replayState.scene = scene;
+      replayState.camera = camera;
+      replayState.renderer = renderer;
+      replayState.controls = controls;
+
+      function resize() {
+        const rect = replayEls.viewer.getBoundingClientRect();
+        renderer.setSize(Math.max(1, rect.width), Math.max(1, rect.height), false);
+        camera.aspect = Math.max(1, rect.width) / Math.max(1, rect.height);
+        camera.updateProjectionMatrix();
+      }
+      window.addEventListener('resize', resize);
+      resize();
+    }
+
+    async function loadRobotModel() {
+      const modelPath = await firstReachable([
+        'robots/ur5e_simplified.urdf',
+        '../robots/ur5e_simplified.urdf',
+        '../../robots/ur5e_simplified.urdf'
+      ]);
+      const loader = new URDFLoader();
+      const robot = await new Promise((resolve, reject) => {
+        loader.load(modelPath, resolve, undefined, reject);
+      });
+      robot.rotation.x = -Math.PI / 2;
+      robot.scale.setScalar(1.2);
+      replayState.scene.add(robot);
+      replayState.robot = robot;
+      replayEls.modelStatus.textContent = 'URDF ready';
+      window.SONAIR_REPLAY_READY = true;
+    }
+
+    function applyJointSample(sample) {
+      if (!replayState.robot || !sample) return;
+      jointMap.forEach(([key, jointName], index) => {
+        const value = sample.q[index];
+        if (!Number.isFinite(value)) return;
+        if (typeof replayState.robot.setJointValue === 'function') {
+          replayState.robot.setJointValue(jointName, value);
+        } else if (replayState.robot.joints?.[jointName]) {
+          replayState.robot.joints[jointName].setJointValue(value);
+        }
+      });
+      replayState.robot.updateMatrixWorld(true);
+    }
+
+    function sourceToScene(point, center) {
+      return new THREE.Vector3(
+        0.42 + (point.x - center.x) * 3.8,
+        0.03 + point.z * 3.8,
+        -(point.y - center.y) * 3.8
+      );
+    }
+
+    function disposeGroup(group) {
+      if (!group) return;
+      group.traverse(child => {
+        child.geometry?.dispose?.();
+        if (Array.isArray(child.material)) child.material.forEach(material => material.dispose?.());
+        else child.material?.dispose?.();
+      });
+      replayState.scene.remove(group);
+    }
+
+    function makeMarker(point, color, radius = 0.018) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 18, 12),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.18 })
+      );
+      mesh.position.copy(point);
+      return mesh;
+    }
+
+    function rebuildPath(caseData) {
+      disposeGroup(replayState.pathGroup);
+      const group = new THREE.Group();
+      const pathWindow = replayState.tcpSamples.filter(point =>
+        point.t >= caseData.criticalT - 2200 && point.t <= caseData.criticalT + 2200
+      );
+      const pathRows = pathWindow.length >= 3 ? pathWindow : replayState.tcpSamples.slice(0, 80);
+      const center = pathRows.reduce((acc, point) => ({
+        x: acc.x + point.x / pathRows.length,
+        y: acc.y + point.y / pathRows.length,
+        z: acc.z + point.z / pathRows.length
+      }), { x: 0, y: 0, z: 0 });
+      const points = pathRows.map(point => sourceToScene(point, center));
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.74 })
+      );
+      group.add(line);
+
+      replayState.labelPoints = {};
+      const riskySamples = caseData.trajectoryWindow.filter(sample => sample.error_mm > 10);
+      riskySamples.forEach(sample => {
+        const color = sample.error_mm > 20 ? 0xf87171 : 0xfbbf24;
+        const radius = sample.error_mm > 20 ? 0.022 : 0.016;
+        group.add(makeMarker(sourceToScene(sample.actual, center), color, radius));
+      });
+      for (const frame of caseData.keyFrames) {
+        const scenePoint = sourceToScene(frame.tcp, center);
+        const color = frame.kind === 'critical' ? 0xfbbf24 : frame.kind === 'before' ? 0xa7f3d0 : 0x7dd3fc;
+        group.add(makeMarker(scenePoint, color, frame.kind === 'critical' ? 0.024 : 0.018));
+        replayState.labelPoints[frame.kind] = scenePoint;
+        const labelSpan = replayEls.labels[frame.kind].querySelector('span');
+        if (labelSpan) labelSpan.textContent = `${replayMs(frame.sample.t - caseData.criticalT)} from case`;
+      }
+
+      const firstPoint = points[0] || new THREE.Vector3(0.42, 0.03, 0);
+      replayState.currentMarker = makeMarker(firstPoint, 0xa7f3d0, 0.028);
+      group.add(replayState.currentMarker);
+      replayState.currentPathCenter = center;
+      replayState.scene.add(group);
+      replayState.pathGroup = group;
+    }
+
+    function updateLabels() {
+      if (!replayState.renderer || !replayState.camera) return;
+      const rect = replayEls.stage.getBoundingClientRect();
+      const offsets = {
+        before: { x: -134, y: -34 },
+        critical: { x: 20, y: -18 },
+        after: { x: 36, y: -36 }
+      };
+      Object.entries(replayEls.labels).forEach(([kind, label]) => {
+        const point = replayState.labelPoints[kind];
+        if (!point) {
+          label.style.display = 'none';
+          return;
+        }
+        const projected = point.clone().project(replayState.camera);
+        const visible = projected.z > -1 && projected.z < 1;
+        const offset = offsets[kind] || { x: 0, y: 0 };
+        label.style.display = visible ? 'block' : 'none';
+        const left = (projected.x * 0.5 + 0.5) * rect.width + offset.x;
+        const top = (-projected.y * 0.5 + 0.5) * rect.height + offset.y;
+        label.style.left = `${clamp(left, 8, Math.max(8, rect.width - label.offsetWidth - 8))}px`;
+        label.style.top = `${clamp(top, 8, Math.max(8, rect.height - label.offsetHeight - 8))}px`;
+      });
+    }
+
+    function renderJoints(sample) {
+      replayEls.joints.innerHTML = jointMap.map(([key], index) =>
+        `<span><strong>${key}</strong>${replayDeg(sample.deg[index])}</span>`
+      ).join('');
+    }
+
+    function setFrame(index) {
+      const caseData = replayState.selectedCase;
+      if (!caseData?.windowSamples.length) return;
+      replayState.frameIndex = clamp(index, 0, caseData.windowSamples.length - 1);
+      const sample = caseData.windowSamples[replayState.frameIndex];
+      applyJointSample(sample);
+      renderJoints(sample);
+      const relative = sample.t - caseData.criticalT;
+      const tcp = nearestByTime(replayState.tcpSamples, sample.t);
+      const errorMm = sample.error_mm;
+      const riskClass = replayRiskClass(errorMm);
+      replayEls.frameStatus.textContent = `Frame ${replayState.frameIndex + 1}/${caseData.windowSamples.length}`;
+      replayEls.timeStatus.textContent = `${replayMs(relative)} from case`;
+      replayEls.errorStatus.textContent = Number.isFinite(errorMm) ? `${errorMm.toFixed(1)} mm ${replayErrorLabel(errorMm)}` : 'error unknown';
+      replayEls.error.textContent = Number.isFinite(errorMm) ? `${errorMm.toFixed(2)} mm` : '--';
+      replayEls.errorBand.textContent = replayErrorLabel(errorMm);
+      setRiskClass(replayEls.errorStatus, errorMm);
+      setRiskClass(replayEls.error, errorMm);
+      setRiskClass(replayEls.errorBand, errorMm);
+      replayEls.stage.classList.toggle('risk-warning', riskClass === 'risk-warning');
+      replayEls.stage.classList.toggle('risk-high', riskClass === 'risk-high');
+      if (replayState.currentMarker && replayState.currentPathCenter && tcp) {
+        replayState.currentMarker.position.copy(sourceToScene(tcp, replayState.currentPathCenter));
+        const color = replayErrorBand(errorMm) === 'high' ? 0xf87171 : replayErrorBand(errorMm) === 'warning' ? 0xfbbf24 : 0xa7f3d0;
+        replayState.currentMarker.material.color.setHex(color);
+        replayState.currentMarker.material.emissive.setHex(color);
+      }
+    }
+
+    function setCase(index) {
+      const caseData = replayState.cases[index];
+      if (!caseData) return;
+      replayState.selectedCase = caseData;
+      replayEls.command.textContent = caseData.item.command_type || caseData.item.type || 'command';
+      replayEls.rtt.textContent = replayMs(caseData.item.rtt_ms);
+      replayEls.lag.textContent = replayMs(caseData.item.lag_ms);
+      replayEls.pose.textContent =
+        `x ${caseData.item.pose.x.toFixed(3)}, y ${caseData.item.pose.y.toFixed(3)}, z ${caseData.item.pose.z.toFixed(3)} m`;
+      replayEls.note.textContent =
+        `${caseData.item.explanation} The 3D replay uses nearest logged joint states and overlays tracking-error risk: green is within 10 mm, orange is above 10 mm, and red is above 20 mm.`;
+      rebuildPath(caseData);
+      const criticalSample = nearestByTime(caseData.windowSamples, caseData.criticalT) || caseData.windowSamples[0];
+      setFrame(Math.max(0, caseData.windowSamples.indexOf(criticalSample)));
+    }
+
+    function buildReplayCases(cases) {
+      return cases.map(item => {
+        const criticalTcp = Number.isFinite(item.pose_t_ms)
+          ? nearestByTime(replayState.tcpSamples, item.pose_t_ms)
+          : nearestByPose(replayState.tcpSamples, item.pose);
+        const criticalT = item.t_ms || criticalTcp?.t || item.pose?.t || replayState.jointSamples[0]?.t || 0;
+        let windowSamples = replayState.jointSamples.filter(sample =>
+          sample.t >= criticalT - 2200 && sample.t <= criticalT + 2200
+        );
+        if (windowSamples.length < 8) {
+          const center = replayState.jointSamples.indexOf(nearestByTime(replayState.jointSamples, criticalT));
+          windowSamples = replayState.jointSamples.slice(Math.max(0, center - 16), center + 17);
+        }
+        const keyFrames = [
+          { kind: 'before', sample: nearestByTime(replayState.jointSamples, criticalT - 1000) },
+          { kind: 'critical', sample: nearestByTime(replayState.jointSamples, criticalT) },
+          { kind: 'after', sample: nearestByTime(replayState.jointSamples, criticalT + 1000) }
+        ].filter(frame => frame.sample).map(frame => ({
+          ...frame,
+          tcp: nearestByTime(replayState.tcpSamples, frame.sample.t) || criticalTcp
+        }));
+        const trajectoryWindow = replayState.trajectorySamples.filter(sample =>
+          sample.t >= criticalT - 2200 && sample.t <= criticalT + 2200
+        );
+        return { item, criticalT, criticalTcp, windowSamples, keyFrames, trajectoryWindow };
+      });
+    }
+
+    function prepareReplayData(source, cases) {
+      replayState.trajectorySamples = (source.trajectory?.samples || []).map(sample => ({
+        t: n(sample.t),
+        error_mm: n(sample.error_mm),
+        actual: {
+          x: n(sample.actual?.x),
+          y: n(sample.actual?.y),
+          z: n(sample.actual?.z)
+        }
+      })).filter(sample => Number.isFinite(sample.t) && Number.isFinite(sample.error_mm) && [sample.actual.x, sample.actual.y, sample.actual.z].every(Number.isFinite)).sort(byTime);
+      replayState.jointSamples = source.jointRows.map(row => ({
+        t: n(row.t_ms),
+        q: jointMap.map(([key]) => n(row[key])),
+        deg: jointMap.map(([key]) => n(row[`${key}_deg`]))
+      })).filter(sample => Number.isFinite(sample.t) && sample.q.every(Number.isFinite)).map(sample => {
+        const nearestError = nearestByTime(replayState.trajectorySamples, sample.t);
+        return {
+          ...sample,
+          error_mm: nearestError?.error_mm ?? null
+        };
+      }).sort(byTime);
+      replayState.tcpSamples = source.tcpRows.map(row => ({
+        t: n(row.t_ms),
+        x: n(row.x),
+        y: n(row.y),
+        z: n(row.z)
+      })).filter(point => [point.t, point.x, point.y, point.z].every(Number.isFinite)).sort(byTime);
+      replayState.opSamples = source.opRows.map(row => ({
+        t: n(row.t_ms),
+        type: row.type || 'command'
+      })).filter(op => Number.isFinite(op.t)).sort(byTime);
+      replayState.cases = buildReplayCases(cases);
+      replayEls.select.innerHTML = replayState.cases.map((caseData, index) =>
+        `<option value="${index}">Case ${caseData.item.rank}: ${caseData.item.command_type || caseData.item.type}</option>`
+      ).join('');
+      replayState.dataReady = true;
+      setCase(0);
+    }
+
+    function tryPrepareFromWindow() {
+      if (!window.SONAIR_MOTION_SOURCE || !window.SONAIR_CRITICAL_CASES?.length) return;
+      prepareReplayData(window.SONAIR_MOTION_SOURCE, window.SONAIR_CRITICAL_CASES);
+    }
+
+    replayEls.select.addEventListener('change', event => setCase(Number(event.target.value)));
+    replayEls.prev.addEventListener('click', () => setFrame(replayState.frameIndex - 1));
+    replayEls.next.addEventListener('click', () => setFrame(replayState.frameIndex + 1));
+    replayEls.play.addEventListener('click', () => {
+      replayState.playing = !replayState.playing;
+      replayEls.play.textContent = replayState.playing ? 'Pause' : 'Play';
+    });
+    replayEls.speed.addEventListener('input', event => {
+      replayState.speed = Number(event.target.value) || 1;
+    });
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (replayState.playing && replayState.selectedCase?.windowSamples.length) {
+        const interval = 220 / replayState.speed;
+        if (!replayState.lastAdvance || now - replayState.lastAdvance >= interval) {
+          const next = replayState.frameIndex + 1 >= replayState.selectedCase.windowSamples.length ? 0 : replayState.frameIndex + 1;
+          setFrame(next);
+          replayState.lastAdvance = now;
+        }
+      }
+      replayState.controls?.update();
+      replayState.renderer?.render(replayState.scene, replayState.camera);
+      updateLabels();
+    }
+
+    async function bootReplay() {
+      try {
+        setupScene();
+        await loadRobotModel();
+        replayState.sceneReady = true;
+        tryPrepareFromWindow();
+      } catch (err) {
+        replayEls.modelStatus.textContent = `3D unavailable: ${err.message}`;
+      } finally {
+        requestAnimationFrame(animate);
+      }
+    }
+
+    window.addEventListener('sonair:evaluation-ready', tryPrepareFromWindow);
+    bootReplay();
   </script>
 
   <script>
