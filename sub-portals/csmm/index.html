@@ -392,8 +392,15 @@
       color:var(--accent);
       min-width:max-content;
     }
+    .formula-figure-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+      width:min(1380px, calc(100vw - 24px));
+      justify-self:center;
+    }
     .formula-figure {
-      margin:12px 0 0;
+      margin:0;
       border:1px solid rgba(255,255,255,.12);
       border-radius:8px;
       overflow:hidden;
@@ -440,6 +447,7 @@
       .dashboard-grid { grid-template-columns:1fr; }
       .chart-wrap { height:280px; }
       .formula-band { grid-template-columns:1fr; }
+      .formula-figure-grid { grid-template-columns:1fr; width:100%; }
       .metric-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .replay-guide { grid-template-columns:1fr; }
       .replay-section { margin:28px 0; padding:24px 0; }
@@ -608,15 +616,18 @@
             \end{aligned}
             \]
           </div>
-          <figure class="formula-figure">
-            <img src="assets/movement-accuracy-threshold.png" alt="Target and actual trajectory with threshold gap status line" loading="eager" />
-            <figcaption>Threshold-based Movement Accuracy: the green/red status line shows whether the actual trajectory stays inside the acceptable gap from the target curve.</figcaption>
-          </figure>
-          <figure class="formula-figure">
-            <img src="assets/recovery-penalty-reset.png" alt="Target and actual trajectory with accumulated gap penalty and fast reset" loading="eager" />
-            <figcaption>Recovery-aware Error Timeline: sustained gaps accumulate penalty, while fast recovery resets the penalty and avoids treating short deviations as long failures.</figcaption>
-          </figure>
         </article>
+      </div>
+
+      <div class="formula-figure-grid" aria-label="Formula visual explanations">
+        <figure class="formula-figure">
+          <img src="assets/movement-accuracy-threshold.png" alt="Target and actual trajectory with threshold gap status line" loading="eager" />
+          <figcaption>Threshold-based Movement Accuracy: the green/red status line shows whether the actual trajectory stays inside the acceptable gap from the target curve.</figcaption>
+        </figure>
+        <figure class="formula-figure">
+          <img src="assets/recovery-penalty-reset.png" alt="Target and actual trajectory with accumulated gap penalty and fast reset" loading="eager" />
+          <figcaption>Recovery-aware Error Timeline: sustained gaps accumulate penalty, while fast recovery resets the penalty and avoids treating short deviations as long failures.</figcaption>
+        </figure>
       </div>
 
       <div class="metric-strip" aria-label="Trajectory quality scores">
