@@ -749,6 +749,12 @@
         <code>Static result: <a href="evaluation.json">evaluation.json</a></code>
       </div>
     </section>
+
+    <section class="card">
+      <h2>Access And Collaboration Requests</h2>
+      <p class="muted">Requests routed to Coventry CSMM by the SONAIR server will appear below for review.</p>
+      <div id="requests-inbox"></div>
+    </section>
   </main>
 
   <script>
@@ -2225,8 +2231,11 @@
 
   <script>
     window.SONAIR_NODE_ID = 'csmm';
-    // Replace this empty value with the event request API endpoint provided by the organisers.
-    window.SONAIR_API_BASE = '';
+    window.SONAIR_API_BASE = 'http://10.23.159.207:5056';
+  </script>
+  <script src="sonair_request_system.js"></script>
+  <script>
+    SONAIR_REQUESTS.renderInbox('requests-inbox');
   </script>
 </body>
 </html>
