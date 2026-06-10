@@ -22,9 +22,9 @@
 </head>
 <body>
   <header>
-    <span class="badge" id="city">Campus node</span>
-    <h1 id="institution">Your University Name</h1>
-    <p class="muted" id="node-name">Your Robotics Lab</p>
+    <span class="badge" id="city">Coventry</span>
+    <h1 id="institution">Coventry University</h1>
+    <p class="muted" id="node-name">CSMM Robotics Evidence Node</p>
   </header>
 
   <main>
@@ -39,7 +39,7 @@
       </article>
       <article class="card">
         <h2>Collaboration contact</h2>
-        <p class="muted">Email: <a href="mailto:yourname@your-institution.ac.uk">yourname@your-institution.ac.uk</a></p>
+        <p class="muted">Email: <a href="mailto:yeh19@uni.coventry.ac.uk">yeh19@uni.coventry.ac.uk</a></p>
       </article>
     </section>
 
@@ -56,8 +56,8 @@
       .then(r => r.json())
       .then(config => {
         document.documentElement.style.setProperty('--primary', config.primary_color || '#00FFC6');
-        document.getElementById('institution').textContent = config.institution_name || 'Your University Name';
-        document.getElementById('node-name').textContent = config.node_name || 'Your Robotics Lab';
+        document.getElementById('institution').textContent = config.institution_name || 'Coventry University';
+        document.getElementById('node-name').textContent = config.node_name || 'CSMM Robotics Evidence Node';
         document.getElementById('city').textContent = config.city || 'Campus node';
         document.title = (config.institution_name || 'SONAIR') + ' Sub-Portal';
       })
@@ -66,7 +66,7 @@
 
   <script>
     // Required for request routing. NODE_ID must exactly match federation.json -> node.id.
-    window.SONAIR_NODE_ID  = 'your-institution-id';
+    window.SONAIR_NODE_ID  = 'coventry-csmm';
     // On the day, replace this with the event request API endpoint, e.g. http://192.168.1.23:5055
     window.SONAIR_API_BASE = 'http://EVENT_REQUEST_API:5055';
   </script>
