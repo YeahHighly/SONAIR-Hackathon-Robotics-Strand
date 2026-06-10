@@ -41,7 +41,7 @@
   'use strict';
 
   const CONFIGURED_API_BASE = (window.SONAIR_API_BASE || '').trim();
-  const API_BASE = CONFIGURED_API_BASE || 'http://10.23.159.207:5056';
+  const API_BASE = CONFIGURED_API_BASE || 'http://102.23.159.207:5056';
   const HAS_SERVER_CONFIG = !!CONFIGURED_API_BASE && !CONFIGURED_API_BASE.includes('EVENT_REQUEST_API');
   const GH_OWNER = window.SONAIR_GITHUB_OWNER || null;
   const GH_REPO  = window.SONAIR_GITHUB_REPO  || null;
